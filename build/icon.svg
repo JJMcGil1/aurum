@@ -1,0 +1,134 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bg" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0%" stop-color="#141414"/>
+      <stop offset="100%" stop-color="#0A0A0A"/>
+    </linearGradient>
+    <!-- Top bar gradients (brightest) -->
+    <linearGradient id="t1" x1="0" y1="0" x2="1" y2="0.6">
+      <stop offset="0%" stop-color="#FFF8B0"/>
+      <stop offset="30%" stop-color="#F5DE6A"/>
+      <stop offset="70%" stop-color="#E8C44A"/>
+      <stop offset="100%" stop-color="#D4A833"/>
+    </linearGradient>
+    <linearGradient id="f1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#EABD42"/>
+      <stop offset="50%" stop-color="#D4A83A"/>
+      <stop offset="100%" stop-color="#B8912A"/>
+    </linearGradient>
+    <linearGradient id="s1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#C49A30"/>
+      <stop offset="100%" stop-color="#7A5F14"/>
+    </linearGradient>
+    <!-- Bar 2 -->
+    <linearGradient id="t2" x1="0" y1="0" x2="1" y2="0.6">
+      <stop offset="0%" stop-color="#F5E080"/>
+      <stop offset="40%" stop-color="#E0C44E"/>
+      <stop offset="100%" stop-color="#C49A30"/>
+    </linearGradient>
+    <linearGradient id="f2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#D8AE38"/>
+      <stop offset="100%" stop-color="#A07D20"/>
+    </linearGradient>
+    <linearGradient id="s2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#B08A25"/>
+      <stop offset="100%" stop-color="#6B5010"/>
+    </linearGradient>
+    <!-- Bar 3 -->
+    <linearGradient id="t3" x1="0" y1="0" x2="1" y2="0.6">
+      <stop offset="0%" stop-color="#E8CC58"/>
+      <stop offset="100%" stop-color="#B08A25"/>
+    </linearGradient>
+    <linearGradient id="f3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C49A30"/>
+      <stop offset="100%" stop-color="#8C6B18"/>
+    </linearGradient>
+    <linearGradient id="s3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#9E7E22"/>
+      <stop offset="100%" stop-color="#5C4410"/>
+    </linearGradient>
+    <!-- Bar 4 (darkest) -->
+    <linearGradient id="t4" x1="0" y1="0" x2="1" y2="0.6">
+      <stop offset="0%" stop-color="#D4AA40"/>
+      <stop offset="100%" stop-color="#9E7E22"/>
+    </linearGradient>
+    <linearGradient id="f4" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#B08A25"/>
+      <stop offset="100%" stop-color="#7A5F14"/>
+    </linearGradient>
+    <linearGradient id="s4" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8C6B18"/>
+      <stop offset="100%" stop-color="#4A3508"/>
+    </linearGradient>
+    <!-- Specular -->
+    <linearGradient id="spec" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FFFDE0" stop-opacity="0"/>
+      <stop offset="35%" stop-color="#FFFDE0" stop-opacity="0.5"/>
+      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.65"/>
+      <stop offset="65%" stop-color="#FFFDE0" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#FFFDE0" stop-opacity="0"/>
+    </linearGradient>
+    <!-- iOS squircle clip -->
+    <clipPath id="iconClip">
+      <rect width="1024" height="1024" rx="224"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#iconClip)">
+    <!-- Background -->
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+    <!-- Subtle vignette ring -->
+    <rect width="1024" height="1024" fill="none" stroke="#D4A843" stroke-width="1" opacity="0.08" rx="224"/>
+
+    <!-- Warm gold glow behind bars -->
+    <ellipse cx="512" cy="458" rx="380" ry="320" fill="#D4A843" opacity="0.12"/>
+    <ellipse cx="512" cy="458" rx="300" ry="240" fill="#E8C44A" opacity="0.18"/>
+    <ellipse cx="512" cy="450" rx="220" ry="180" fill="#F0D050" opacity="0.2"/>
+    <ellipse cx="512" cy="440" rx="150" ry="120" fill="#F5DE6A" opacity="0.18"/>
+    <ellipse cx="512" cy="430" rx="80" ry="60" fill="#FFF2A0" opacity="0.12"/>
+
+    <!-- Gold bars centered in icon — slightly misaligned for realism -->
+    <g transform="translate(512, 458) scale(3.8)">
+
+      <!-- Bar 4 (bottom) — shifted right -->
+      <g transform="translate(6, 68)">
+        <path d="M-66,0 L66,0 L66,30 L-66,30 Z" fill="url(#f4)"/>
+        <path d="M-66,0 L-52,-18 L52,-18 L66,0 Z" fill="url(#t4)"/>
+        <path d="M66,0 L52,-18 L52,12 L66,30 Z" fill="url(#s4)"/>
+        <line x1="-66" y1="0" x2="66" y2="0" stroke="#D4AA40" stroke-width="0.6" opacity="0.5"/>
+      </g>
+
+      <!-- Bar 3 — shifted left -->
+      <g transform="translate(-5, 28)">
+        <path d="M-66,0 L66,0 L66,30 L-66,30 Z" fill="url(#f3)"/>
+        <path d="M-66,0 L-52,-18 L52,-18 L66,0 Z" fill="url(#t3)"/>
+        <path d="M66,0 L52,-18 L52,12 L66,30 Z" fill="url(#s3)"/>
+        <line x1="-66" y1="0" x2="66" y2="0" stroke="#E8C44A" stroke-width="0.6" opacity="0.5"/>
+        <path d="M-20,2 L20,2 L20,28 L-20,28 Z" fill="url(#spec)" opacity="0.15"/>
+      </g>
+
+      <!-- Bar 2 — shifted right slightly -->
+      <g transform="translate(4, -12)">
+        <path d="M-66,0 L66,0 L66,30 L-66,30 Z" fill="url(#f2)"/>
+        <path d="M-66,0 L-52,-18 L52,-18 L66,0 Z" fill="url(#t2)"/>
+        <path d="M66,0 L52,-18 L52,12 L66,30 Z" fill="url(#s2)"/>
+        <line x1="-66" y1="0" x2="66" y2="0" stroke="#F0D45A" stroke-width="0.6" opacity="0.6"/>
+        <path d="M-15,2 L25,2 L25,28 L-15,28 Z" fill="url(#spec)" opacity="0.2"/>
+      </g>
+
+      <!-- Bar 1 (top, hero) — shifted left -->
+      <g transform="translate(-3, -52)">
+        <path d="M-66,0 L66,0 L66,30 L-66,30 Z" fill="url(#f1)"/>
+        <path d="M-66,0 L-52,-18 L52,-18 L66,0 Z" fill="url(#t1)"/>
+        <path d="M66,0 L52,-18 L52,12 L66,30 Z" fill="url(#s1)"/>
+        <line x1="-66" y1="0" x2="66" y2="0" stroke="#FFF8B0" stroke-width="1" opacity="0.7"/>
+        <path d="M-40,-15 L-20,-15 L-14,-3 L-46,-3 Z" fill="#FFFDE0" opacity="0.2"/>
+        <path d="M-10,2 L30,2 L30,28 L-10,28 Z" fill="url(#spec)" opacity="0.25"/>
+        <rect x="-20" y="-14" width="40" height="11" rx="1.5" fill="none" stroke="#C49A30" stroke-width="0.5" opacity="0.45"/>
+        <line x1="-66" y1="0" x2="-52" y2="-18" stroke="#FFF2A0" stroke-width="0.5" opacity="0.4"/>
+      </g>
+
+    </g>
+  </g>
+</svg>

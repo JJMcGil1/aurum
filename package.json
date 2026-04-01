@@ -1,0 +1,52 @@
+{
+  "name": "aurum",
+  "version": "1.0.0",
+  "description": "Aurum - Family Finance Tracker",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build && electron-builder",
+    "preview": "vite preview",
+    "electron:dev": "vite build && electron ."
+  },
+  "author": "Justin McGill",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "typescript": "^5.5.0",
+    "vite": "^6.0.0",
+    "vite-plugin-electron": "^0.28.0",
+    "vite-plugin-electron-renderer": "^0.14.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "lucide-react": "^0.460.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "react-router-dom": "^7.0.0",
+    "recharts": "^2.13.0"
+  },
+  "build": {
+    "appId": "com.aurum.finance",
+    "productName": "Aurum",
+    "icon": "build/icon.png",
+    "mac": {
+      "category": "public.app-category.finance",
+      "icon": "build/icon.icns"
+    },
+    "win": {
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "icon": "build/icon.png"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ]
+  }
+}
