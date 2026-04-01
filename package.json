@@ -5,7 +5,9 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && electron-builder",
+    "build": "tsc && vite build",
+    "dist": "npm run build && electron-builder --publish never",
+    "release": "npm run dist && node scripts/generate-release-hash.js",
     "preview": "vite preview",
     "electron:dev": "vite build && electron ."
   },
@@ -34,9 +36,16 @@
     "appId": "com.aurum.finance",
     "productName": "Aurum",
     "icon": "build/icon.png",
+    "directories": {
+      "output": "release"
+    },
     "mac": {
       "category": "public.app-category.finance",
-      "icon": "build/icon.icns"
+      "icon": "build/icon.icns",
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] },
+        { "target": "zip", "arch": ["x64", "arm64"] }
+      ]
     },
     "win": {
       "icon": "build/icon.png"

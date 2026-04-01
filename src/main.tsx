@@ -5,6 +5,7 @@ import { Layout } from './components/Layout'
 import { Dashboard } from './pages/Dashboard'
 import { Expenses } from './pages/Expenses'
 import { Family } from './pages/Family'
+import { UpdateToast } from './components/UpdateToast'
 import './styles.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -18,5 +19,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         </Route>
       </Routes>
     </HashRouter>
+    <UpdateToast />
   </React.StrictMode>
 )

@@ -3,6 +3,7 @@ import path from 'path'
 import fs from 'fs'
 import crypto from 'crypto'
 import { Database } from './database'
+import { initAutoUpdater, stopAutoUpdater } from './auto-updater'
 
 app.disableHardwareAcceleration()
 
@@ -51,9 +52,14 @@ app.whenReady().then(() => {
   db = new Database()
   registerIpcHandlers()
   createWindow()
+
+  if (mainWindow) {
+    initAutoUpdater(mainWindow)
+  }
 })
 
 app.on('window-all-closed', () => {
+  stopAutoUpdater()
   if (process.platform !== 'darwin') app.quit()
 })
 
@@ -62,6 +68,9 @@ app.on('activate', () => {
 })
 
 function registerIpcHandlers() {
+  // App version
+  ipcMain.handle('app:getVersion', () => app.getVersion())
+
   // Family members
   ipcMain.handle('db:getFamilyMembers', () => db.getFamilyMembers())
   ipcMain.handle('db:addFamilyMember', (_, member) => db.addFamilyMember(member))

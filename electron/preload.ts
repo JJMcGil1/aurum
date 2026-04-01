@@ -1,5 +1,28 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
+const updater = {
+  checkForUpdates: () => ipcRenderer.invoke('updater:checkForUpdates'),
+  downloadUpdate: () => ipcRenderer.invoke('updater:downloadUpdate'),
+  installUpdate: () => ipcRenderer.invoke('updater:installUpdate'),
+  dismissUpdate: () => ipcRenderer.invoke('updater:dismissUpdate'),
+  onUpdateAvailable: (cb: (data: any) => void) => {
+    ipcRenderer.on('updater:update-available', (_e, data) => cb(data))
+    return () => { ipcRenderer.removeAllListeners('updater:update-available') }
+  },
+  onDownloadProgress: (cb: (data: any) => void) => {
+    ipcRenderer.on('updater:download-progress', (_e, data) => cb(data))
+    return () => { ipcRenderer.removeAllListeners('updater:download-progress') }
+  },
+  onUpdateDownloaded: (cb: () => void) => {
+    ipcRenderer.on('updater:update-downloaded', () => cb())
+    return () => { ipcRenderer.removeAllListeners('updater:update-downloaded') }
+  },
+  onUpdateError: (cb: (data: any) => void) => {
+    ipcRenderer.on('updater:update-error', (_e, data) => cb(data))
+    return () => { ipcRenderer.removeAllListeners('updater:update-error') }
+  },
+}
+
 const api = {
   // Family Members
   getFamilyMembers: () => ipcRenderer.invoke('db:getFamilyMembers'),
@@ -39,3 +62,7 @@ const api = {
 }
 
 contextBridge.exposeInMainWorld('api', api)
+contextBridge.exposeInMainWorld('updater', updater)
+contextBridge.exposeInMainWorld('electronAPI', {
+  getVersion: () => ipcRenderer.invoke('app:getVersion'),
+})
