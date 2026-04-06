@@ -50,11 +50,21 @@ app.whenReady().then(() => {
   }
 
   // Database init must not block window creation or auto-updater
+  let dbError: string | null = null
   try {
     db = new Database()
     registerIpcHandlers()
-  } catch (err) {
+  } catch (err: any) {
+    dbError = err?.message || String(err)
     console.error('[main] Database initialization failed:', err)
+  }
+
+  // If DB failed, register a diagnostic handler so the renderer can show the error
+  if (dbError) {
+    const errorMsg = dbError
+    ipcMain.handle('db:getError', () => errorMsg)
+    // Show a dialog so we can see the error immediately
+    dialog.showErrorBox('Database Error', `Aurum could not initialize the database:\n\n${errorMsg}`)
   }
 
   createWindow()
