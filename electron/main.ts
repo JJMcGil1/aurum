@@ -49,8 +49,14 @@ app.whenReady().then(() => {
     app.dock.setIcon(path.join(__dirname, '../build/icon.png'))
   }
 
-  db = new Database()
-  registerIpcHandlers()
+  // Database init must not block window creation or auto-updater
+  try {
+    db = new Database()
+    registerIpcHandlers()
+  } catch (err) {
+    console.error('[main] Database initialization failed:', err)
+  }
+
   createWindow()
 
   if (mainWindow) {
