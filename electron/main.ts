@@ -22,7 +22,7 @@ function createWindow() {
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#0f0f0f',
-    icon: path.join(__dirname, '../build/icon.png'),
+    icon: process.env.VITE_DEV_SERVER_URL ? path.join(__dirname, '../build/icon.png') : undefined,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -44,9 +44,12 @@ app.whenReady().then(() => {
     return net.fetch('file://' + filePath)
   })
 
-  // Set dock icon on macOS (needed during dev — production uses .icns from the bundle)
-  if (process.platform === 'darwin' && app.dock) {
-    app.dock.setIcon(path.join(__dirname, '../build/icon.png'))
+  // Set dock icon on macOS — only needed during dev; production uses .icns from the bundle
+  if (process.platform === 'darwin' && app.dock && process.env.VITE_DEV_SERVER_URL) {
+    const iconPath = path.join(__dirname, '../build/icon.png')
+    if (fs.existsSync(iconPath)) {
+      app.dock.setIcon(iconPath)
+    }
   }
 
   // Database init must not block window creation or auto-updater
