@@ -57,6 +57,34 @@ const api = {
   // Dashboard
   getDashboardData: () => ipcRenderer.invoke('db:getDashboardData'),
 
+  // Bills
+  getBills: () => ipcRenderer.invoke('db:getBills'),
+  addBill: (bill: any) => ipcRenderer.invoke('db:addBill', bill),
+  updateBill: (id: number, bill: any) => ipcRenderer.invoke('db:updateBill', id, bill),
+  deleteBill: (id: number) => ipcRenderer.invoke('db:deleteBill', id),
+  payBill: (id: number) => ipcRenderer.invoke('db:payBill', id),
+
+  // Budgets
+  getBudgets: () => ipcRenderer.invoke('db:getBudgets'),
+  addBudget: (b: any) => ipcRenderer.invoke('db:addBudget', b),
+  updateBudget: (id: number, b: any) => ipcRenderer.invoke('db:updateBudget', id, b),
+  deleteBudget: (id: number) => ipcRenderer.invoke('db:deleteBudget', id),
+
+  // Goals
+  getGoals: () => ipcRenderer.invoke('db:getGoals'),
+  addGoal: (g: any) => ipcRenderer.invoke('db:addGoal', g),
+  updateGoal: (id: number, g: any) => ipcRenderer.invoke('db:updateGoal', id, g),
+  deleteGoal: (id: number) => ipcRenderer.invoke('db:deleteGoal', id),
+  contributeToGoal: (id: number, amount: number) => ipcRenderer.invoke('db:contributeToGoal', id, amount),
+
+  // Net Worth
+  getNetWorth: () => ipcRenderer.invoke('db:getNetWorth'),
+  takeNetWorthSnapshot: () => ipcRenderer.invoke('db:takeNetWorthSnapshot'),
+
+  // Savings
+  getSavingsData: () => ipcRenderer.invoke('db:getSavingsData'),
+  addSavingsContribution: (payload: any) => ipcRenderer.invoke('db:addSavingsContribution', payload),
+
   // Profile image
   pickProfileImage: () => ipcRenderer.invoke('dialog:pickProfileImage'),
 }

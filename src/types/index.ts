@@ -78,6 +78,77 @@ export interface DashboardData {
   spendingByMember: { name: string; avatar_color: string; total: number }[]
 }
 
+export type BillRecurrence = 'once' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly'
+
+export interface Bill {
+  id: number
+  name: string
+  amount: number
+  due_date: string
+  recurrence: BillRecurrence
+  category_id: number | null
+  category_name: string | null
+  category_color: string | null
+  account_id: number | null
+  account_name: string | null
+  notes: string | null
+  is_paid: number
+  last_paid_date: string | null
+  created_at: string
+}
+
+export type BudgetPeriod = 'weekly' | 'monthly' | 'yearly'
+
+export interface Budget {
+  id: number
+  category_id: number
+  category_name: string
+  category_color: string
+  amount: number
+  period: BudgetPeriod
+  spent: number
+  period_start: string
+  period_end: string
+  created_at: string
+}
+
+export interface Goal {
+  id: number
+  name: string
+  target_amount: number
+  current_amount: number
+  target_date: string | null
+  color: string
+  notes: string | null
+  created_at: string
+}
+
+export interface NetWorthSnapshot {
+  date: string
+  assets: number
+  liabilities: number
+  net_worth: number
+}
+
+export interface NetWorthData {
+  assets: number
+  liabilities: number
+  netWorth: number
+  history: NetWorthSnapshot[]
+  breakdown: { type: string; total: number; count: number }[]
+}
+
+export interface SavingsData {
+  totalSavings: number
+  savingsRate: number
+  monthIncome: number
+  monthExpense: number
+  monthSaved: number
+  trend: { month: string; saved: number }[]
+  accounts: Account[]
+  recent: Transaction[]
+}
+
 declare global {
   interface Window {
     api: {
@@ -103,6 +174,24 @@ declare global {
       deleteExpense: (id: number) => Promise<void>
       getNonPetMembers: () => Promise<FamilyMember[]>
       getDashboardData: () => Promise<DashboardData>
+      getBills: () => Promise<Bill[]>
+      addBill: (bill: any) => Promise<Bill>
+      updateBill: (id: number, bill: any) => Promise<Bill>
+      deleteBill: (id: number) => Promise<void>
+      payBill: (id: number) => Promise<Bill>
+      getBudgets: () => Promise<Budget[]>
+      addBudget: (b: any) => Promise<Budget>
+      updateBudget: (id: number, b: any) => Promise<Budget>
+      deleteBudget: (id: number) => Promise<void>
+      getGoals: () => Promise<Goal[]>
+      addGoal: (g: any) => Promise<Goal>
+      updateGoal: (id: number, g: any) => Promise<Goal>
+      deleteGoal: (id: number) => Promise<void>
+      contributeToGoal: (id: number, amount: number) => Promise<Goal>
+      getNetWorth: () => Promise<NetWorthData>
+      takeNetWorthSnapshot: () => Promise<NetWorthSnapshot>
+      getSavingsData: () => Promise<SavingsData>
+      addSavingsContribution: (payload: { account_id: number; amount: number; date: string; description?: string; notes?: string }) => Promise<Transaction>
     }
   }
 }

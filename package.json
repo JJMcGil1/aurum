@@ -9,7 +9,7 @@
     "dist": "npm run build && electron-builder --publish never",
     "release": "npm run dist && node scripts/generate-release-hash.js",
     "preview": "vite preview",
-    "electron:dev": "vite build && electron .",
+    "start:built": "vite build && electron .",
     "postinstall": "electron-builder install-app-deps",
     "rebuild-sqlite": "npx @electron/rebuild -f -w better-sqlite3"
   },

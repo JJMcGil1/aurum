@@ -53,6 +53,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 20, y: 24 },
     backgroundColor: '#0f0f0f',
     icon: process.env.VITE_DEV_SERVER_URL ? path.join(__dirname, '../build/icon.png') : undefined,
     webPreferences: {
@@ -150,6 +151,34 @@ function registerIpcHandlers() {
 
   // Dashboard
   dbHandler('db:getDashboardData', () => db!.getDashboardData())
+
+  // Bills
+  dbHandler('db:getBills', () => db!.getBills())
+  dbHandler('db:addBill', (_: any, bill: any) => db!.addBill(bill))
+  dbHandler('db:updateBill', (_: any, id: number, bill: any) => db!.updateBill(id, bill))
+  dbHandler('db:deleteBill', (_: any, id: number) => db!.deleteBill(id))
+  dbHandler('db:payBill', (_: any, id: number) => db!.payBill(id))
+
+  // Budgets
+  dbHandler('db:getBudgets', () => db!.getBudgets())
+  dbHandler('db:addBudget', (_: any, b: any) => db!.addBudget(b))
+  dbHandler('db:updateBudget', (_: any, id: number, b: any) => db!.updateBudget(id, b))
+  dbHandler('db:deleteBudget', (_: any, id: number) => db!.deleteBudget(id))
+
+  // Goals
+  dbHandler('db:getGoals', () => db!.getGoals())
+  dbHandler('db:addGoal', (_: any, g: any) => db!.addGoal(g))
+  dbHandler('db:updateGoal', (_: any, id: number, g: any) => db!.updateGoal(id, g))
+  dbHandler('db:deleteGoal', (_: any, id: number) => db!.deleteGoal(id))
+  dbHandler('db:contributeToGoal', (_: any, id: number, amount: number) => db!.contributeToGoal(id, amount))
+
+  // Net Worth
+  dbHandler('db:getNetWorth', () => db!.getNetWorth())
+  dbHandler('db:takeNetWorthSnapshot', () => db!.takeNetWorthSnapshot())
+
+  // Savings
+  dbHandler('db:getSavingsData', () => db!.getSavingsData())
+  dbHandler('db:addSavingsContribution', (_: any, payload: any) => db!.addSavingsContribution(payload))
 
   // Profile image picker
   ipcMain.handle('dialog:pickProfileImage', async () => {

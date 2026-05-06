@@ -85,6 +85,49 @@ export class Database {
 
       CREATE INDEX IF NOT EXISTS idx_expense_members_expense ON expense_members(expense_id);
       CREATE INDEX IF NOT EXISTS idx_expense_members_member ON expense_members(member_id);
+
+      CREATE TABLE IF NOT EXISTS bills (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL,
+        due_date TEXT NOT NULL,
+        recurrence TEXT NOT NULL DEFAULT 'monthly' CHECK(recurrence IN ('once','weekly','biweekly','monthly','quarterly','yearly')),
+        category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+        account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+        notes TEXT,
+        is_paid INTEGER NOT NULL DEFAULT 0,
+        last_paid_date TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_bills_due_date ON bills(due_date);
+
+      CREATE TABLE IF NOT EXISTS budgets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category_id INTEGER NOT NULL UNIQUE REFERENCES categories(id) ON DELETE CASCADE,
+        amount REAL NOT NULL,
+        period TEXT NOT NULL DEFAULT 'monthly' CHECK(period IN ('weekly','monthly','yearly')),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS goals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        target_amount REAL NOT NULL,
+        current_amount REAL NOT NULL DEFAULT 0,
+        target_date TEXT,
+        color TEXT NOT NULL DEFAULT '#d4a843',
+        notes TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS net_worth_snapshots (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL UNIQUE,
+        assets REAL NOT NULL,
+        liabilities REAL NOT NULL,
+        net_worth REAL NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
     `)
 
     // Migrate old schema: if 'name' column exists but 'first_name' doesn't, migrate
@@ -493,5 +536,307 @@ export class Database {
       monthlyTrend,
       spendingByMember
     }
+  }
+
+  // Bills
+  getBills() {
+    return this.db.prepare(`
+      SELECT b.*, c.name as category_name, c.color as category_color, a.name as account_name
+      FROM bills b
+      LEFT JOIN categories c ON b.category_id = c.id
+      LEFT JOIN accounts a ON b.account_id = a.id
+      ORDER BY b.due_date ASC
+    `).all()
+  }
+
+  addBill(bill: { name: string; amount: number; due_date: string; recurrence: string; category_id?: number; account_id?: number; notes?: string }) {
+    const stmt = this.db.prepare(`
+      INSERT INTO bills (name, amount, due_date, recurrence, category_id, account_id, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `)
+    const result = stmt.run(bill.name, bill.amount, bill.due_date, bill.recurrence, bill.category_id || null, bill.account_id || null, bill.notes || null)
+    return this.db.prepare('SELECT * FROM bills WHERE id = ?').get(result.lastInsertRowid)
+  }
+
+  updateBill(id: number, bill: Partial<{ name: string; amount: number; due_date: string; recurrence: string; category_id: number | null; account_id: number | null; notes: string; is_paid: number }>) {
+    const fields: string[] = []
+    const values: any[] = []
+    for (const [key, val] of Object.entries(bill)) {
+      if (val !== undefined) { fields.push(`${key} = ?`); values.push(val) }
+    }
+    if (fields.length === 0) return this.db.prepare('SELECT * FROM bills WHERE id = ?').get(id)
+    values.push(id)
+    this.db.prepare(`UPDATE bills SET ${fields.join(', ')} WHERE id = ?`).run(...values)
+    return this.db.prepare('SELECT * FROM bills WHERE id = ?').get(id)
+  }
+
+  deleteBill(id: number) {
+    this.db.prepare('DELETE FROM bills WHERE id = ?').run(id)
+  }
+
+  payBill(id: number) {
+    const bill = this.db.prepare('SELECT * FROM bills WHERE id = ?').get(id) as any
+    if (!bill) return null
+    const today = new Date().toISOString().slice(0, 10)
+
+    // Create a transaction if account is linked
+    if (bill.account_id) {
+      const txStmt = this.db.prepare(`
+        INSERT INTO transactions (amount, type, description, date, account_id, category_id)
+        VALUES (?, 'expense', ?, ?, ?, ?)
+      `)
+      txStmt.run(bill.amount, bill.name, today, bill.account_id, bill.category_id || null)
+      this.db.prepare('UPDATE accounts SET balance = balance - ? WHERE id = ?').run(bill.amount, bill.account_id)
+    }
+
+    // Advance due_date for recurring bills, otherwise mark paid
+    const next = this.advanceDueDate(bill.due_date, bill.recurrence)
+    if (next) {
+      this.db.prepare('UPDATE bills SET due_date = ?, last_paid_date = ?, is_paid = 0 WHERE id = ?').run(next, today, id)
+    } else {
+      this.db.prepare('UPDATE bills SET is_paid = 1, last_paid_date = ? WHERE id = ?').run(today, id)
+    }
+    return this.db.prepare('SELECT * FROM bills WHERE id = ?').get(id)
+  }
+
+  private advanceDueDate(dateStr: string, recurrence: string): string | null {
+    if (recurrence === 'once') return null
+    const d = new Date(dateStr + 'T00:00:00')
+    switch (recurrence) {
+      case 'weekly': d.setDate(d.getDate() + 7); break
+      case 'biweekly': d.setDate(d.getDate() + 14); break
+      case 'monthly': d.setMonth(d.getMonth() + 1); break
+      case 'quarterly': d.setMonth(d.getMonth() + 3); break
+      case 'yearly': d.setFullYear(d.getFullYear() + 1); break
+      default: return null
+    }
+    return d.toISOString().slice(0, 10)
+  }
+
+  // Budgets
+  getBudgets() {
+    const budgets = this.db.prepare(`
+      SELECT b.*, c.name as category_name, c.color as category_color
+      FROM budgets b
+      JOIN categories c ON b.category_id = c.id
+      ORDER BY c.name
+    `).all() as any[]
+
+    const now = new Date()
+    return budgets.map(b => {
+      const { start, end } = this.periodRange(b.period, now)
+      const spent = this.db.prepare(`
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM transactions
+        WHERE category_id = ? AND type = 'expense' AND date >= ? AND date <= ?
+      `).get(b.category_id, start, end) as any
+      return { ...b, spent: spent.total, period_start: start, period_end: end }
+    })
+  }
+
+  addBudget(b: { category_id: number; amount: number; period: string }) {
+    const stmt = this.db.prepare('INSERT INTO budgets (category_id, amount, period) VALUES (?, ?, ?)')
+    const result = stmt.run(b.category_id, b.amount, b.period)
+    return this.db.prepare('SELECT * FROM budgets WHERE id = ?').get(result.lastInsertRowid)
+  }
+
+  updateBudget(id: number, b: Partial<{ amount: number; period: string }>) {
+    const fields: string[] = []
+    const values: any[] = []
+    for (const [key, val] of Object.entries(b)) {
+      if (val !== undefined) { fields.push(`${key} = ?`); values.push(val) }
+    }
+    if (fields.length === 0) return this.db.prepare('SELECT * FROM budgets WHERE id = ?').get(id)
+    values.push(id)
+    this.db.prepare(`UPDATE budgets SET ${fields.join(', ')} WHERE id = ?`).run(...values)
+    return this.db.prepare('SELECT * FROM budgets WHERE id = ?').get(id)
+  }
+
+  deleteBudget(id: number) {
+    this.db.prepare('DELETE FROM budgets WHERE id = ?').run(id)
+  }
+
+  private periodRange(period: string, ref: Date): { start: string; end: string } {
+    const y = ref.getFullYear()
+    const m = ref.getMonth()
+    const d = ref.getDate()
+    const fmt = (date: Date) => date.toISOString().slice(0, 10)
+    if (period === 'weekly') {
+      const day = ref.getDay() // 0=Sun
+      const offset = (day + 6) % 7 // distance back to Monday
+      const start = new Date(y, m, d - offset)
+      const end = new Date(y, m, d - offset + 6)
+      return { start: fmt(start), end: fmt(end) }
+    }
+    if (period === 'yearly') {
+      return { start: `${y}-01-01`, end: `${y}-12-31` }
+    }
+    // monthly default
+    const start = new Date(y, m, 1)
+    const end = new Date(y, m + 1, 0)
+    return { start: fmt(start), end: fmt(end) }
+  }
+
+  // Goals
+  getGoals() {
+    return this.db.prepare('SELECT * FROM goals ORDER BY created_at DESC').all()
+  }
+
+  addGoal(g: { name: string; target_amount: number; current_amount?: number; target_date?: string; color?: string; notes?: string }) {
+    const stmt = this.db.prepare(`
+      INSERT INTO goals (name, target_amount, current_amount, target_date, color, notes)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `)
+    const result = stmt.run(g.name, g.target_amount, g.current_amount || 0, g.target_date || null, g.color || '#d4a843', g.notes || null)
+    return this.db.prepare('SELECT * FROM goals WHERE id = ?').get(result.lastInsertRowid)
+  }
+
+  updateGoal(id: number, g: Partial<{ name: string; target_amount: number; current_amount: number; target_date: string | null; color: string; notes: string | null }>) {
+    const fields: string[] = []
+    const values: any[] = []
+    for (const [key, val] of Object.entries(g)) {
+      if (val !== undefined) { fields.push(`${key} = ?`); values.push(val) }
+    }
+    if (fields.length === 0) return this.db.prepare('SELECT * FROM goals WHERE id = ?').get(id)
+    values.push(id)
+    this.db.prepare(`UPDATE goals SET ${fields.join(', ')} WHERE id = ?`).run(...values)
+    return this.db.prepare('SELECT * FROM goals WHERE id = ?').get(id)
+  }
+
+  deleteGoal(id: number) {
+    this.db.prepare('DELETE FROM goals WHERE id = ?').run(id)
+  }
+
+  contributeToGoal(id: number, amount: number) {
+    this.db.prepare('UPDATE goals SET current_amount = current_amount + ? WHERE id = ?').run(amount, id)
+    return this.db.prepare('SELECT * FROM goals WHERE id = ?').get(id)
+  }
+
+  // Net Worth
+  getNetWorth() {
+    const accounts = this.db.prepare('SELECT * FROM accounts').all() as any[]
+    let assets = 0
+    let liabilities = 0
+    for (const a of accounts) {
+      if (['credit_card', 'loan'].includes(a.type)) liabilities += Math.abs(a.balance)
+      else assets += a.balance
+    }
+    const history = this.db.prepare('SELECT date, assets, liabilities, net_worth FROM net_worth_snapshots ORDER BY date ASC').all()
+    const breakdown = this.db.prepare(`
+      SELECT type, SUM(balance) as total, COUNT(*) as count
+      FROM accounts
+      GROUP BY type
+    `).all()
+    return {
+      assets,
+      liabilities,
+      netWorth: assets - liabilities,
+      history,
+      breakdown,
+    }
+  }
+
+  // Savings
+  getSavingsData() {
+    const accounts = this.db.prepare(`
+      SELECT a.*, TRIM(fm.first_name || ' ' || fm.last_name) as owner_name
+      FROM accounts a
+      LEFT JOIN family_members fm ON a.owner_id = fm.id
+      WHERE a.type = 'savings'
+      ORDER BY a.balance DESC
+    `).all() as any[]
+
+    const totalSavings = accounts.reduce((s, a) => s + a.balance, 0)
+    const accountIds = accounts.map(a => a.id)
+    const idList = accountIds.length ? accountIds.join(',') : '0'
+
+    const now = new Date()
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+    const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-31`
+
+    // Whole-portfolio income/expense for this month (used for savings rate)
+    const monthIncome = this.db.prepare(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE type = 'income' AND date >= ? AND date <= ?`
+    ).get(monthStart, monthEnd) as any
+    const monthExpense = this.db.prepare(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE type = 'expense' AND date >= ? AND date <= ?`
+    ).get(monthStart, monthEnd) as any
+
+    const savingsRate = monthIncome.total > 0
+      ? Math.max(0, (monthIncome.total - monthExpense.total) / monthIncome.total) * 100
+      : 0
+
+    // Trailing 6-month trend: net flow into savings accounts (income to them minus expense from them)
+    const trend: { month: string; saved: number }[] = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const start = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+      const endD = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+      const end = `${endD.getFullYear()}-${String(endD.getMonth() + 1).padStart(2, '0')}-${String(endD.getDate()).padStart(2, '0')}`
+
+      let saved = 0
+      if (accountIds.length) {
+        const inflow = this.db.prepare(
+          `SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE type = 'income' AND account_id IN (${idList}) AND date >= ? AND date <= ?`
+        ).get(start, end) as any
+        const outflow = this.db.prepare(
+          `SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE type = 'expense' AND account_id IN (${idList}) AND date >= ? AND date <= ?`
+        ).get(start, end) as any
+        saved = inflow.total - outflow.total
+      }
+      trend.push({ month: d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }), saved })
+    }
+
+    // Recent transactions on savings accounts
+    let recent: any[] = []
+    if (accountIds.length) {
+      recent = this.db.prepare(`
+        SELECT t.*, a.name as account_name
+        FROM transactions t
+        LEFT JOIN accounts a ON t.account_id = a.id
+        WHERE t.account_id IN (${idList})
+        ORDER BY t.date DESC, t.created_at DESC
+        LIMIT 10
+      `).all()
+    }
+
+    return {
+      totalSavings,
+      savingsRate,
+      monthIncome: monthIncome.total,
+      monthExpense: monthExpense.total,
+      monthSaved: monthIncome.total - monthExpense.total,
+      trend,
+      accounts,
+      recent,
+    }
+  }
+
+  addSavingsContribution(payload: { account_id: number; amount: number; date: string; description?: string; notes?: string }) {
+    return this.addTransaction({
+      account_id: payload.account_id,
+      amount: payload.amount,
+      type: 'income',
+      description: payload.description || 'Savings contribution',
+      date: payload.date,
+      notes: payload.notes,
+    })
+  }
+
+  takeNetWorthSnapshot() {
+    const accounts = this.db.prepare('SELECT * FROM accounts').all() as any[]
+    let assets = 0
+    let liabilities = 0
+    for (const a of accounts) {
+      if (['credit_card', 'loan'].includes(a.type)) liabilities += Math.abs(a.balance)
+      else assets += a.balance
+    }
+    const today = new Date().toISOString().slice(0, 10)
+    this.db.prepare(`
+      INSERT INTO net_worth_snapshots (date, assets, liabilities, net_worth)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(date) DO UPDATE SET assets = excluded.assets, liabilities = excluded.liabilities, net_worth = excluded.net_worth
+    `).run(today, assets, liabilities, assets - liabilities)
+    return this.db.prepare('SELECT * FROM net_worth_snapshots WHERE date = ?').get(today)
   }
 }

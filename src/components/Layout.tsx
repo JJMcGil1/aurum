@@ -1,55 +1,57 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutDashboard, Receipt, Users } from 'lucide-react'
-import aurumLogo from '../assets/aurum-logo.svg'
+import {
+  LayoutDashboard,
+  Users,
+  MessageSquare,
+  Wallet,
+  CalendarDays,
+  PiggyBank,
+  Target,
+  TrendingUp,
+  Landmark,
+} from 'lucide-react'
+import { TopBar } from './TopBar'
 
-const topNavItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/expenses', icon: Receipt, label: 'Expenses' },
-]
-
-const bottomNavItems = [
+const railNavItems = [
+  { to: '/', icon: MessageSquare, label: 'Chat', end: true },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/accounts', icon: Wallet, label: 'Accounts' },
+  { to: '/calendar', icon: CalendarDays, label: 'Calendar' },
+  { to: '/budgets', icon: PiggyBank, label: 'Budgets' },
+  { to: '/savings', icon: Landmark, label: 'Savings' },
+  { to: '/goals', icon: Target, label: 'Goals' },
+  { to: '/net-worth', icon: TrendingUp, label: 'Net Worth' },
   { to: '/family', icon: Users, label: 'Family' },
 ]
 
 export function Layout() {
   return (
     <div className="app-layout">
-      <div className="window-drag-bar" />
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <img src={aurumLogo} alt="Aurum" className="sidebar-logo" />
-        </div>
-        <nav className="sidebar-nav">
-          <div className="sidebar-nav-top">
-            {topNavItems.map(({ to, icon: Icon, label }) => (
+      <TopBar />
+      <div className="app-body">
+        <aside className="left-rail">
+          <nav className="left-rail-nav">
+            {railNavItems.map(({ to, icon: Icon, label, end }) => (
               <NavLink
                 key={to}
                 to={to}
-                end={to === '/'}
-                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                end={end}
+                title={label}
+                aria-label={label}
+                className={({ isActive }) => `rail-link ${isActive ? 'active' : ''}`}
               >
                 <Icon />
-                {label}
+                <span className="rail-label">{label}</span>
               </NavLink>
             ))}
+          </nav>
+        </aside>
+        <main className="main-content">
+          <div className="main-content-body">
+            <Outlet />
           </div>
-          <div className="sidebar-nav-bottom">
-            {bottomNavItems.map(({ to, icon: Icon, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-              >
-                <Icon />
-                {label}
-              </NavLink>
-            ))}
-          </div>
-        </nav>
-      </aside>
-      <main className="main-content">
-        <Outlet />
-      </main>
+        </main>
+      </div>
     </div>
   )
 }
