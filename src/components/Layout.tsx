@@ -14,6 +14,7 @@ const bottomNavItems = [
 export function Layout() {
   return (
     <div className="app-layout">
+      <div className="window-drag-bar" />
       <aside className="sidebar">
         <div className="sidebar-header">
           <img src={aurumLogo} alt="Aurum" className="sidebar-logo" />
