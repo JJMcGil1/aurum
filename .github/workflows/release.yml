@@ -85,14 +85,24 @@ jobs:
       - name: Generate latest.json and hashes
         run: node scripts/generate-release-hash.js
 
-      - name: Create GitHub Release
+      - name: Create or update GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "v${{ needs.check-version.outputs.version }}" \
-            --title "Aurum v${{ needs.check-version.outputs.version }}" \
-            --notes "Bug fixes and improvements." \
-            release/*.dmg \
-            release/*.zip \
-            release/latest.json \
-            release/hashes.txt
+          TAG="v${{ needs.check-version.outputs.version }}"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG already exists — uploading assets with --clobber"
+            gh release upload "$TAG" --clobber \
+              release/*.dmg \
+              release/*.zip \
+              release/latest.json \
+              release/hashes.txt
+          else
+            gh release create "$TAG" \
+              --title "Aurum $TAG" \
+              --notes "Bug fixes and improvements." \
+              release/*.dmg \
+              release/*.zip \
+              release/latest.json \
+              release/hashes.txt
+          fi
