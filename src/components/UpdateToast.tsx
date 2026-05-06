@@ -34,7 +34,7 @@ export function UpdateToast() {
     const unsubs = [
       window.updater.onUpdateAvailable((data) => {
         setVersion(data.version)
-        setState('available')
+        setState((s) => (s === 'idle' ? 'available' : s))
       }),
       window.updater.onDownloadProgress((data) => {
         setProgress(data.percent)
@@ -49,7 +49,18 @@ export function UpdateToast() {
       }),
     ]
 
-    return () => { unsubs.forEach(fn => fn()) }
+    // Pull state on mount to avoid losing the first push if the main process
+    // emits 'update-available' before this listener registers.
+    window.updater.checkForUpdates().catch(() => {})
+
+    // Re-check on window focus so re-activating the app picks up new releases.
+    const onFocus = () => { window.updater.checkForUpdates().catch(() => {}) }
+    window.addEventListener('focus', onFocus)
+
+    return () => {
+      unsubs.forEach(fn => fn())
+      window.removeEventListener('focus', onFocus)
+    }
   }, [])
 
   if (state === 'idle') return null
