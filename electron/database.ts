@@ -6,9 +6,11 @@ import { app } from 'electron'
 export class Database {
   private db: BetterSqlite3.Database
   public profileImagesDir: string
+  public dbPath: string
 
   constructor() {
     const dbPath = path.join(app.getPath('userData'), 'aurum.db')
+    this.dbPath = dbPath
     this.profileImagesDir = path.join(app.getPath('userData'), 'profile-images')
     if (!fs.existsSync(this.profileImagesDir)) {
       fs.mkdirSync(this.profileImagesDir, { recursive: true })
@@ -25,6 +27,7 @@ export class Database {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         first_name TEXT NOT NULL,
         last_name TEXT NOT NULL DEFAULT '',
+        email TEXT,
         role TEXT NOT NULL DEFAULT 'member',
         avatar_color TEXT NOT NULL DEFAULT '#6366f1',
         avatar_image TEXT,
@@ -128,12 +131,39 @@ export class Database {
         net_worth REAL NOT NULL,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
+
+      CREATE TABLE IF NOT EXISTS chat_threads (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL DEFAULT 'New chat',
+        claude_session_id TEXT,
+        model TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_chat_threads_updated ON chat_threads(updated_at DESC);
+
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id TEXT PRIMARY KEY,
+        thread_id TEXT NOT NULL REFERENCES chat_threads(id) ON DELETE CASCADE,
+        role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
+        status TEXT NOT NULL DEFAULT 'done',
+        blocks_json TEXT NOT NULL,
+        meta_json TEXT,
+        error TEXT,
+        created_at_ms INTEGER NOT NULL,
+        ord INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_chat_messages_thread ON chat_messages(thread_id, ord);
     `)
 
     // Migrate old schema: if 'name' column exists but 'first_name' doesn't, migrate
     const cols = this.db.prepare("PRAGMA table_info(family_members)").all() as any[]
     const hasFirstName = cols.some((c: any) => c.name === 'first_name')
     const hasOldName = cols.some((c: any) => c.name === 'name')
+    const hasEmail = cols.some((c: any) => c.name === 'email')
+    if (!hasEmail) {
+      this.db.exec(`ALTER TABLE family_members ADD COLUMN email TEXT`)
+    }
     if (hasOldName && hasFirstName) {
       // Previous migration added first_name/last_name but didn't drop name — fix it
       this.db.exec('ALTER TABLE family_members DROP COLUMN name')
@@ -215,17 +245,18 @@ export class Database {
     `).all().map((m: any) => ({ ...m, name: m.name.trim() }))
   }
 
-  addFamilyMember(member: { first_name: string; last_name: string; role: string; avatar_color: string; avatar_image?: string }) {
-    const stmt = this.db.prepare('INSERT INTO family_members (first_name, last_name, role, avatar_color, avatar_image) VALUES (?, ?, ?, ?, ?)')
-    const result = stmt.run(member.first_name, member.last_name || '', member.role, member.avatar_color, member.avatar_image || null)
+  addFamilyMember(member: { first_name: string; last_name: string; email?: string | null; role: string; avatar_color: string; avatar_image?: string }) {
+    const stmt = this.db.prepare('INSERT INTO family_members (first_name, last_name, email, role, avatar_color, avatar_image) VALUES (?, ?, ?, ?, ?, ?)')
+    const result = stmt.run(member.first_name, member.last_name || '', member.email || null, member.role, member.avatar_color, member.avatar_image || null)
     return this.db.prepare('SELECT *, (first_name || \' \' || last_name) AS name FROM family_members WHERE id = ?').get(result.lastInsertRowid)
   }
 
-  updateFamilyMember(id: number, member: { first_name?: string; last_name?: string; role?: string; avatar_color?: string; avatar_image?: string | null }) {
+  updateFamilyMember(id: number, member: { first_name?: string; last_name?: string; email?: string | null; role?: string; avatar_color?: string; avatar_image?: string | null }) {
     const fields: string[] = []
     const values: any[] = []
     if (member.first_name !== undefined) { fields.push('first_name = ?'); values.push(member.first_name) }
     if (member.last_name !== undefined) { fields.push('last_name = ?'); values.push(member.last_name) }
+    if (member.email !== undefined) { fields.push('email = ?'); values.push(member.email) }
     if (member.role !== undefined) { fields.push('role = ?'); values.push(member.role) }
     if (member.avatar_color !== undefined) { fields.push('avatar_color = ?'); values.push(member.avatar_color) }
     if (member.avatar_image !== undefined) { fields.push('avatar_image = ?'); values.push(member.avatar_image) }
@@ -838,5 +869,85 @@ export class Database {
       ON CONFLICT(date) DO UPDATE SET assets = excluded.assets, liabilities = excluded.liabilities, net_worth = excluded.net_worth
     `).run(today, assets, liabilities, assets - liabilities)
     return this.db.prepare('SELECT * FROM net_worth_snapshots WHERE date = ?').get(today)
+  }
+
+  // ===== Chat threads =====
+
+  listChatThreads() {
+    return this.db.prepare(`
+      SELECT
+        t.id,
+        t.title,
+        t.claude_session_id,
+        t.model,
+        t.created_at,
+        t.updated_at,
+        (SELECT COUNT(*) FROM chat_messages m WHERE m.thread_id = t.id) AS message_count
+      FROM chat_threads t
+      ORDER BY t.updated_at DESC
+    `).all()
+  }
+
+  getChatThread(id: string) {
+    const thread = this.db.prepare(`SELECT * FROM chat_threads WHERE id = ?`).get(id) as any
+    if (!thread) return null
+    const messages = this.db.prepare(`
+      SELECT id, thread_id, role, status, blocks_json, meta_json, error, created_at_ms, ord
+      FROM chat_messages WHERE thread_id = ? ORDER BY ord ASC
+    `).all(id)
+    return { thread, messages }
+  }
+
+  createChatThread(payload: { id: string; title: string; model: string | null }) {
+    this.db.prepare(`
+      INSERT INTO chat_threads (id, title, model) VALUES (?, ?, ?)
+    `).run(payload.id, payload.title, payload.model ?? null)
+    return this.db.prepare(`SELECT * FROM chat_threads WHERE id = ?`).get(payload.id)
+  }
+
+  updateChatThread(
+    id: string,
+    fields: { title?: string; claude_session_id?: string | null; model?: string | null; touch?: boolean },
+  ) {
+    const sets: string[] = []
+    const values: any[] = []
+    if (fields.title !== undefined) { sets.push('title = ?'); values.push(fields.title) }
+    if (fields.claude_session_id !== undefined) {
+      sets.push('claude_session_id = ?'); values.push(fields.claude_session_id)
+    }
+    if (fields.model !== undefined) { sets.push('model = ?'); values.push(fields.model) }
+    if (fields.touch !== false) sets.push("updated_at = datetime('now')")
+    if (sets.length === 0) return this.db.prepare(`SELECT * FROM chat_threads WHERE id = ?`).get(id)
+    values.push(id)
+    this.db.prepare(`UPDATE chat_threads SET ${sets.join(', ')} WHERE id = ?`).run(...values)
+    return this.db.prepare(`SELECT * FROM chat_threads WHERE id = ?`).get(id)
+  }
+
+  deleteChatThread(id: string) {
+    this.db.prepare(`DELETE FROM chat_threads WHERE id = ?`).run(id)
+  }
+
+  saveChatMessage(payload: {
+    id: string
+    thread_id: string
+    role: 'user' | 'assistant'
+    status: string
+    blocks_json: string
+    meta_json: string | null
+    error: string | null
+    created_at_ms: number
+    ord: number
+  }) {
+    this.db.prepare(`
+      INSERT INTO chat_messages (id, thread_id, role, status, blocks_json, meta_json, error, created_at_ms, ord)
+      VALUES (@id, @thread_id, @role, @status, @blocks_json, @meta_json, @error, @created_at_ms, @ord)
+      ON CONFLICT(id) DO UPDATE SET
+        status = excluded.status,
+        blocks_json = excluded.blocks_json,
+        meta_json = excluded.meta_json,
+        error = excluded.error,
+        ord = excluded.ord
+    `).run(payload)
+    this.db.prepare(`UPDATE chat_threads SET updated_at = datetime('now') WHERE id = ?`).run(payload.thread_id)
   }
 }

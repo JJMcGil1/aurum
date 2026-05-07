@@ -95,6 +95,15 @@ app.whenReady().then(() => {
     dialog.showErrorBox('Database Error', `Aurum could not initialize the database:\n\n${dbInitError}\n\nLogs: ${path.join(app.getPath('logs'), 'aurum-main.log')}`)
   }
 
+  // Hand the Aurum MCP server location + DB path to claude-cli so the chat
+  // can invoke local expense tools when the user asks about their finances.
+  if (db) {
+    claudeCli.configureAurumTools({
+      dbPath: db.dbPath,
+      mcpServerPath: path.join(__dirname, 'aurum-mcp-server.js'),
+    })
+  }
+
   // Always register handlers — even on DB failure — so the renderer gets a typed
   // error instead of "No handler registered for ...".
   registerIpcHandlers()
@@ -194,6 +203,23 @@ function registerIpcHandlers() {
     (_e, prompt: string, options: { sessionId?: string | null; model?: string | null } = {}) =>
       claudeCli.sendMessage(prompt, options),
   )
+  ipcMain.handle(
+    'claude:streamMessage',
+    (_e, requestId: string, prompt: string, options: { sessionId?: string | null; model?: string | null } = {}) => {
+      if (!mainWindow) throw new Error('Window not ready')
+      return claudeCli.startStream(mainWindow, requestId, prompt, options)
+    },
+  )
+  ipcMain.handle('claude:cancelStream', (_e, requestId: string) => claudeCli.cancelStream(requestId))
+  ipcMain.handle('claude:listAurumTools', () => claudeCli.listAurumTools())
+
+  // Chat threads
+  dbHandler('db:listChatThreads', () => db!.listChatThreads())
+  dbHandler('db:getChatThread', (_: any, id: string) => db!.getChatThread(id))
+  dbHandler('db:createChatThread', (_: any, payload: any) => db!.createChatThread(payload))
+  dbHandler('db:updateChatThread', (_: any, id: string, fields: any) => db!.updateChatThread(id, fields))
+  dbHandler('db:deleteChatThread', (_: any, id: string) => db!.deleteChatThread(id))
+  dbHandler('db:saveChatMessage', (_: any, payload: any) => db!.saveChatMessage(payload))
 
   // Profile image picker
   ipcMain.handle('dialog:pickProfileImage', async () => {

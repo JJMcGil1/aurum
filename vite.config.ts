@@ -29,6 +29,17 @@ export default defineConfig({
             outDir: 'dist-electron'
           }
         }
+      },
+      {
+        entry: 'electron/aurum-mcp-server.ts',
+        vite: {
+          build: {
+            outDir: 'dist-electron',
+            rollupOptions: {
+              external: ['better-sqlite3']
+            }
+          }
+        }
       }
     ]),
     renderer()

@@ -26,19 +26,15 @@ export function Dashboard() {
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-label">Total Expenses</div>
-          <div className="stat-value negative">{formatCurrency(data.totalExpenses)}</div>
+          <div className="stat-value">{formatCurrency(data.totalExpenses)}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">This Month</div>
-          <div className="stat-value negative">{formatCurrency(data.monthlyExpenses)}</div>
+          <div className="stat-value">{formatCurrency(data.monthlyExpenses)}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Number of Expenses</div>
           <div className="stat-value accent">{data.expenseCount}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Average Expense</div>
-          <div className="stat-value negative">{formatCurrency(data.averageExpense)}</div>
         </div>
       </div>
 
@@ -57,7 +53,7 @@ export function Dashboard() {
                   contentStyle={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, fontSize: 13 }}
                   labelStyle={{ color: '#a0a0a0' }}
                 />
-                <Bar dataKey="expenses" fill="#ef4444" radius={[4, 4, 0, 0]} name="Expenses" />
+                <Bar dataKey="expenses" fill="var(--accent)" radius={[4, 4, 0, 0]} name="Expenses" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -110,7 +106,7 @@ export function Dashboard() {
                   <tr key={exp.id}>
                     <td>{exp.name}</td>
                     <td>
-                      <span className="amount amount-negative">
+                      <span className="amount">
                         {formatCurrency(exp.amount)}
                       </span>
                     </td>

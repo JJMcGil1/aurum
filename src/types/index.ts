@@ -3,6 +3,7 @@ export interface FamilyMember {
   first_name: string
   last_name: string
   name: string // computed: first_name + last_name
+  email: string | null
   role: string
   avatar_color: string
   avatar_image: string | null
@@ -157,6 +158,12 @@ declare global {
       updateFamilyMember: (id: number, member: Partial<FamilyMember>) => Promise<FamilyMember>
       deleteFamilyMember: (id: number) => Promise<void>
       pickProfileImage: () => Promise<string | null>
+      listChatThreads: () => Promise<ChatThreadSummary[]>
+      getChatThread: (id: string) => Promise<{ thread: ChatThreadRow; messages: ChatMessageRow[] } | null>
+      createChatThread: (payload: { id: string; title: string; model: string | null }) => Promise<ChatThreadRow>
+      updateChatThread: (id: string, fields: Partial<{ title: string; claude_session_id: string | null; model: string | null; touch: boolean }>) => Promise<ChatThreadRow>
+      deleteChatThread: (id: string) => Promise<void>
+      saveChatMessage: (payload: ChatMessageRow) => Promise<void>
       getAccounts: () => Promise<Account[]>
       addAccount: (account: any) => Promise<Account>
       updateAccount: (id: number, account: any) => Promise<Account>
@@ -202,6 +209,14 @@ declare global {
         prompt: string,
         options?: { sessionId?: string | null; model?: string | null },
       ) => Promise<ClaudeSendResult>
+      streamMessage: (
+        requestId: string,
+        prompt: string,
+        options?: { sessionId?: string | null; model?: string | null },
+      ) => Promise<void>
+      cancelStream: (requestId: string) => Promise<void>
+      listAurumTools: () => Promise<{ name: string; description: string }[]>
+      onStreamEvent: (cb: (data: { requestId: string; payload: ClaudeStreamPayload }) => void) => () => void
       onLoginEvent: (cb: (data: ClaudeLoginEvent) => void) => () => void
     }
   }
@@ -232,3 +247,56 @@ export type ClaudeLoginEvent =
   | { kind: 'cancelled' }
   | { kind: 'timeout' }
   | { kind: 'error'; message: string }
+
+export type ClaudeStreamBlock =
+  | { kind: 'text' }
+  | { kind: 'thinking' }
+  | { kind: 'tool_use'; id: string; name: string; input: any }
+  | { kind: 'unknown'; raw: any }
+
+export interface ChatThreadRow {
+  id: string
+  title: string
+  claude_session_id: string | null
+  model: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ChatThreadSummary extends ChatThreadRow {
+  message_count: number
+}
+
+export interface ChatMessageRow {
+  id: string
+  thread_id: string
+  role: 'user' | 'assistant'
+  status: string
+  blocks_json: string
+  meta_json: string | null
+  error: string | null
+  created_at_ms: number
+  ord: number
+}
+
+export type ClaudeStreamPayload =
+  | { type: 'session_init'; sessionId: string; model: string | null }
+  | { type: 'message_start'; messageId: string }
+  | { type: 'block_open'; messageId: string; index: number; block: ClaudeStreamBlock }
+  | { type: 'text_delta'; messageId: string; index: number; text: string }
+  | { type: 'thinking_delta'; messageId: string; index: number; text: string }
+  | { type: 'tool_input_delta'; messageId: string; index: number; partialJson: string }
+  | { type: 'block_close'; messageId: string; index: number; finalInput?: any }
+  | { type: 'message_stop'; messageId: string }
+  | { type: 'tool_result'; toolUseId: string; text: string; isError?: boolean }
+  | {
+      type: 'result'
+      sessionId: string | null
+      durationMs: number
+      model: string | null
+      costUsd: number | null
+      inputTokens: number | null
+      outputTokens: number | null
+    }
+  | { type: 'error'; message: string }
+  | { type: 'closed' }

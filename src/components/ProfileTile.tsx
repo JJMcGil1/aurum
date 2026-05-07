@@ -1,85 +1,86 @@
-import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Camera, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { UserPlus, Camera, X } from 'lucide-react'
 import { getInitials } from '../lib/format'
 import type { FamilyMember } from '../types'
 
 const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6']
-const ROLES = ['Owner', 'Spouse', 'Partner', 'Child', 'Parent', 'Pet', 'Other']
 
 interface FormState {
   first_name: string
   last_name: string
   email: string
-  role: string
   avatar_color: string
   avatar_image: string | null
 }
 
-const emptyForm: FormState = { first_name: '', last_name: '', email: '', role: 'Owner', avatar_color: COLORS[0], avatar_image: null }
+const emptyForm: FormState = {
+  first_name: '',
+  last_name: '',
+  email: '',
+  avatar_color: COLORS[0],
+  avatar_image: null,
+}
 
-export function Family() {
+function pickProfile(members: FamilyMember[]): FamilyMember | null {
+  if (members.length === 0) return null
+  return members.find(m => m.role === 'Owner') ?? members[0]
+}
+
+export function ProfileTile() {
   const [members, setMembers] = useState<FamilyMember[]>([])
   const [showModal, setShowModal] = useState(false)
-  const [editing, setEditing] = useState<FamilyMember | null>(null)
   const [form, setForm] = useState<FormState>({ ...emptyForm })
+
+  const profile = useMemo(() => pickProfile(members), [members])
 
   const load = () => { window.api.getFamilyMembers().then(setMembers) }
   useEffect(() => { load() }, [])
 
-  const openNew = () => {
-    setEditing(null)
-    setForm({ ...emptyForm })
-    setShowModal(true)
-  }
-
-  const openEdit = (m: FamilyMember) => {
-    setEditing(m)
-    setForm({
-      first_name: m.first_name,
-      last_name: m.last_name,
-      email: m.email ?? '',
-      role: m.role,
-      avatar_color: m.avatar_color,
-      avatar_image: m.avatar_image
-    })
+  const openModal = () => {
+    if (profile) {
+      setForm({
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        email: profile.email ?? '',
+        avatar_color: profile.avatar_color,
+        avatar_image: profile.avatar_image,
+      })
+    } else {
+      setForm({ ...emptyForm })
+    }
     setShowModal(true)
   }
 
   const pickImage = async () => {
     const imagePath = await window.api.pickProfileImage()
-    if (imagePath) {
-      setForm({ ...form, avatar_image: imagePath })
-    }
+    if (imagePath) setForm(f => ({ ...f, avatar_image: imagePath }))
   }
 
-  const removeImage = () => {
-    setForm({ ...form, avatar_image: null })
-  }
+  const removeImage = () => setForm(f => ({ ...f, avatar_image: null }))
 
   const save = async () => {
-    if (editing) {
-      await window.api.updateFamilyMember(editing.id, form)
+    const payload = {
+      first_name: form.first_name.trim(),
+      last_name: form.last_name.trim(),
+      email: form.email.trim() || null,
+      avatar_color: form.avatar_color,
+      avatar_image: form.avatar_image,
+    }
+    if (profile) {
+      await window.api.updateFamilyMember(profile.id, payload)
     } else {
-      await window.api.addFamilyMember(form)
+      await window.api.addFamilyMember({ ...payload, role: 'Owner' } as any)
     }
     setShowModal(false)
     load()
   }
 
-  const remove = async (id: number) => {
-    if (confirm('Remove this family member?')) {
-      await window.api.deleteFamilyMember(id)
-      load()
-    }
-  }
+  const fullName = profile ? `${profile.first_name} ${profile.last_name}`.trim() : ''
+  const formFullName = `${form.first_name} ${form.last_name}`.trim()
 
-  const renderAvatar = (m: FamilyMember | null, size: 'sm' | 'lg' | 'xl', formData?: FormState) => {
-    const data = formData || (m ? { first_name: m.first_name, last_name: m.last_name, avatar_color: m.avatar_color, avatar_image: m.avatar_image } : null)
-    if (!data) return null
-
-    const sizeClass = size === 'xl' ? 'avatar-xl' : size === 'lg' ? 'avatar-lg' : ''
+  const renderAvatar = (size: 'sm' | 'xl', data: { first_name: string; last_name: string; avatar_color: string; avatar_image: string | null }) => {
+    const sizeClass = size === 'xl' ? 'avatar-xl' : ''
     const name = `${data.first_name} ${data.last_name}`.trim()
-
     if (data.avatar_image) {
       return (
         <div className={`avatar ${sizeClass}`} style={{ overflow: 'hidden', padding: 0 }}>
@@ -91,7 +92,6 @@ export function Family() {
         </div>
       )
     }
-
     return (
       <div className={`avatar ${sizeClass}`} style={{ background: data.avatar_color }}>
         {name ? getInitials(name) : '?'}
@@ -100,49 +100,29 @@ export function Family() {
   }
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Family</h1>
-          <p className="page-subtitle">Manage family members and pets to track individual spending</p>
-        </div>
-        <button className="btn btn-primary" onClick={openNew}><Plus size={16} /> Add Member</button>
-      </div>
-
-      {members.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {members.map(m => (
-            <div key={m.id} className="member-card">
-              {renderAvatar(m, 'lg')}
-              <div className="member-info">
-                <div className="member-name">{m.name}</div>
-                <div className="member-role">{m.role}</div>
-              </div>
-              <div className="member-actions">
-                <button className="btn btn-ghost btn-sm" onClick={() => openEdit(m)}><Pencil size={14} /></button>
-                <button className="btn btn-ghost btn-sm" onClick={() => remove(m.id)}><Trash2 size={14} /></button>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="card">
-          <div className="empty-state">
-            <h3>No family members yet</h3>
-            <p>Add yourself, family members, and pets to track spending per member</p>
-            <button className="btn btn-primary" onClick={openNew}><Plus size={16} /> Add Member</button>
-          </div>
-        </div>
-      )}
+    <>
+      <button
+        type="button"
+        className="rail-link rail-profile"
+        onClick={openModal}
+        title={profile ? fullName || 'Profile' : 'Set up profile'}
+        aria-label={profile ? `Profile: ${fullName}` : 'Set up profile'}
+      >
+        {profile ? (
+          renderAvatar('sm', profile)
+        ) : (
+          <UserPlus />
+        )}
+        <span className="rail-label">{profile ? fullName || 'Profile' : 'Set up profile'}</span>
+      </button>
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2 className="modal-title">{editing ? 'Edit Member' : 'Add Family Member'}</h2>
+            <h2 className="modal-title">{profile ? 'Edit Profile' : 'Create Profile'}</h2>
 
-            {/* Avatar preview + image picker */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-              {renderAvatar(null, 'xl', form)}
+              {renderAvatar('xl', { first_name: form.first_name || (formFullName || '?'), last_name: form.last_name, avatar_color: form.avatar_color, avatar_image: form.avatar_image })}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <button className="btn btn-secondary btn-sm" onClick={pickImage} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Camera size={14} /> {form.avatar_image ? 'Change Photo' : 'Add Photo'}
@@ -171,17 +151,10 @@ export function Family() {
               <input
                 className="form-input"
                 type="email"
-                placeholder="optional"
+                placeholder="you@example.com"
                 value={form.email}
                 onChange={e => setForm({ ...form, email: e.target.value })}
               />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Role</label>
-              <select className="form-select" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}>
-                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
             </div>
 
             <div className="form-group">
@@ -198,13 +171,21 @@ export function Family() {
               </div>
             </div>
 
+            {profile && (
+              <p className="settings-help" style={{ marginTop: 4 }}>
+                Linked to your family member <strong>{fullName || 'Owner'}</strong> ({profile.role}).
+              </p>
+            )}
+
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={save} disabled={!form.first_name}>{editing ? 'Save' : 'Add Member'}</button>
+              <button className="btn btn-primary" onClick={save} disabled={!form.first_name.trim()}>
+                {profile ? 'Save' : 'Create'}
+              </button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }

@@ -87,6 +87,15 @@ const api = {
 
   // Profile image
   pickProfileImage: () => ipcRenderer.invoke('dialog:pickProfileImage'),
+
+  // Chat threads
+  listChatThreads: () => ipcRenderer.invoke('db:listChatThreads'),
+  getChatThread: (id: string) => ipcRenderer.invoke('db:getChatThread', id),
+  createChatThread: (payload: { id: string; title: string; model: string | null }) =>
+    ipcRenderer.invoke('db:createChatThread', payload),
+  updateChatThread: (id: string, fields: any) => ipcRenderer.invoke('db:updateChatThread', id, fields),
+  deleteChatThread: (id: string) => ipcRenderer.invoke('db:deleteChatThread', id),
+  saveChatMessage: (payload: any) => ipcRenderer.invoke('db:saveChatMessage', payload),
 }
 
 const claude = {
@@ -96,6 +105,18 @@ const claude = {
   signOut: () => ipcRenderer.invoke('claude:signOut'),
   sendMessage: (prompt: string, options?: { sessionId?: string | null; model?: string | null }) =>
     ipcRenderer.invoke('claude:sendMessage', prompt, options ?? {}),
+  streamMessage: (
+    requestId: string,
+    prompt: string,
+    options?: { sessionId?: string | null; model?: string | null },
+  ) => ipcRenderer.invoke('claude:streamMessage', requestId, prompt, options ?? {}),
+  cancelStream: (requestId: string) => ipcRenderer.invoke('claude:cancelStream', requestId),
+  listAurumTools: () => ipcRenderer.invoke('claude:listAurumTools'),
+  onStreamEvent: (cb: (data: any) => void) => {
+    const listener = (_e: any, data: any) => cb(data)
+    ipcRenderer.on('claude:stream-event', listener)
+    return () => { ipcRenderer.removeListener('claude:stream-event', listener) }
+  },
   onLoginEvent: (cb: (data: any) => void) => {
     const listener = (_e: any, data: any) => cb(data)
     ipcRenderer.on('claude:login-event', listener)

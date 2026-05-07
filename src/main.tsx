@@ -15,6 +15,7 @@ import { Goals } from './pages/Goals'
 import { NetWorth } from './pages/NetWorth'
 import { Savings } from './pages/Savings'
 import { Settings } from './pages/Settings'
+import { ChatPage } from './pages/Chat'
 import { UpdateToast } from './components/UpdateToast'
 import './styles.css'
 
@@ -33,6 +34,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/savings" element={<Savings />} />
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/family" element={<Family />} />
+          <Route path="/chat" element={<ChatPage />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>

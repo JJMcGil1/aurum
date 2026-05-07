@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronDown } from 'lucide-react'
 import { CLAUDE_MODELS, findModel, type ModelOption } from '@/lib/claudeModels'
 
 interface Props {
@@ -8,6 +7,13 @@ interface Props {
   cliVersion?: string | null
   connected: boolean
   disabled?: boolean
+}
+
+const TIER: Record<ModelOption['family'], number> = {
+  auto: 0,
+  haiku: 1,
+  sonnet: 2,
+  opus: 3,
 }
 
 export function ChatModelPicker({ model, onChange, cliVersion, connected, disabled }: Props) {
@@ -33,43 +39,41 @@ export function ChatModelPicker({ model, onChange, cliVersion, connected, disabl
   const active = findModel(model)
 
   return (
-    <div className="model-picker" ref={wrapRef}>
+    <div className={`mp${open ? ' is-open' : ''}`} ref={wrapRef}>
       <button
         type="button"
-        className="model-picker-trigger"
+        className="mp-trigger"
         onClick={() => setOpen(o => !o)}
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <ClaudeMark size={14} />
-        <span className="model-picker-trigger-label">{active.shortLabel}</span>
-        <ChevronDown size={12} />
+        <span className={`mp-dot ${connected ? 'is-on' : 'is-off'}`} aria-hidden />
+        <span className="mp-trigger-name">{active.shortLabel}</span>
       </button>
 
       {open && (
-        <div className="model-picker-menu" role="listbox">
-          <div className="model-picker-header">
-            <ClaudeMark size={16} />
-            <span className="model-picker-header-name">Claude Code</span>
-            {cliVersion && <span className="model-picker-header-version">{cliVersion}</span>}
-            <span
-              className={`model-picker-status-dot${connected ? ' is-connected' : ''}`}
-              title={connected ? 'Connected' : 'Not connected'}
-            />
+        <div className="mp-menu" role="listbox">
+          <div className="mp-menu-head">
+            <span className="mp-menu-eyebrow">Model</span>
+            <span className="mp-menu-status">
+              <span className={`mp-dot ${connected ? 'is-on' : 'is-off'}`} aria-hidden />
+              <span className="mp-menu-version">{cliVersion ?? 'offline'}</span>
+            </span>
           </div>
-          <div className="model-picker-divider" />
-          {CLAUDE_MODELS.map(opt => (
-            <ModelRow
-              key={opt.id}
-              option={opt}
-              active={opt.id === model}
-              onSelect={() => {
-                onChange(opt.id)
-                setOpen(false)
-              }}
-            />
-          ))}
+          <ul className="mp-list">
+            {CLAUDE_MODELS.map(opt => (
+              <ModelRow
+                key={opt.id}
+                option={opt}
+                active={opt.id === model}
+                onSelect={() => {
+                  onChange(opt.id)
+                  setOpen(false)
+                }}
+              />
+            ))}
+          </ul>
         </div>
       )}
     </div>
@@ -85,41 +89,38 @@ function ModelRow({
   active: boolean
   onSelect: () => void
 }) {
+  const tier = TIER[option.family]
   return (
-    <button
-      type="button"
-      role="option"
-      aria-selected={active}
-      className={`model-picker-row${active ? ' is-active' : ''}`}
-      onClick={onSelect}
-    >
-      <ClaudeMark size={14} className="model-picker-row-icon" />
-      <div className="model-picker-row-body">
-        <div className="model-picker-row-label">{option.label}</div>
-        <div className="model-picker-row-desc">{option.description}</div>
-      </div>
-      {active && <Check size={14} className="model-picker-row-check" />}
-    </button>
+    <li>
+      <button
+        type="button"
+        role="option"
+        aria-selected={active}
+        className={`mp-row${active ? ' is-active' : ''}`}
+        onClick={onSelect}
+      >
+        <span className="mp-row-bar" aria-hidden />
+        <span className="mp-row-main">
+          <span className="mp-row-name">{option.label}</span>
+          <span className="mp-row-tag">
+            {option.family === 'auto' ? 'AUTO' : option.family.toUpperCase()}
+          </span>
+        </span>
+        <TierGauge tier={tier} family={option.family} />
+      </button>
+    </li>
   )
 }
 
-/**
- * Claude brand sparkle mark. Stylized 4-point star matching the Anthropic
- * Claude visual identity.
- */
-export function ClaudeMark({ size = 14, className }: { size?: number; className?: string }) {
+function TierGauge({ tier, family }: { tier: number; family: ModelOption['family'] }) {
+  if (family === 'auto') {
+    return <span className="mp-tier mp-tier-auto" aria-label="Auto">AUTO</span>
+  }
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      className={`claude-mark${className ? ` ${className}` : ''}`}
-      aria-hidden="true"
-    >
-      <path
-        d="M12 2.5 C 12.4 8.4 14.6 11.6 21.5 12 C 14.6 12.4 12.4 15.6 12 21.5 C 11.6 15.6 9.4 12.4 2.5 12 C 9.4 11.6 11.6 8.4 12 2.5 Z"
-        fill="currentColor"
-      />
-    </svg>
+    <span className="mp-tier" aria-label={`Tier ${tier}`}>
+      {[1, 2, 3].map(i => (
+        <span key={i} className={`mp-tier-tick${i <= tier ? ' is-on' : ''}`} />
+      ))}
+    </span>
   )
 }
