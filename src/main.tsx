@@ -8,13 +8,13 @@ initTheme()
 import { Dashboard } from './pages/Dashboard'
 import { Expenses } from './pages/Expenses'
 import { Family } from './pages/Family'
-import { Chat } from './pages/Chat'
 import { Accounts } from './pages/Accounts'
 import { Calendar } from './pages/Calendar'
 import { Budgets } from './pages/Budgets'
 import { Goals } from './pages/Goals'
 import { NetWorth } from './pages/NetWorth'
 import { Savings } from './pages/Savings'
+import { Settings } from './pages/Settings'
 import { UpdateToast } from './components/UpdateToast'
 import './styles.css'
 
@@ -23,7 +23,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <HashRouter>
       <Routes>
         <Route element={<Layout />}>
-          <Route path="/" element={<Chat />} />
+          <Route path="/" element={<Dashboard />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/accounts" element={<Accounts />} />
           <Route path="/calendar" element={<Calendar />} />
@@ -33,6 +33,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/savings" element={<Savings />} />
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/family" element={<Family />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>
     </HashRouter>

@@ -193,5 +193,42 @@ declare global {
       getSavingsData: () => Promise<SavingsData>
       addSavingsContribution: (payload: { account_id: number; amount: number; date: string; description?: string; notes?: string }) => Promise<Transaction>
     }
+    claude: {
+      getStatus: () => Promise<ClaudeStatus>
+      startLogin: () => Promise<void>
+      cancelLogin: () => Promise<void>
+      signOut: () => Promise<{ ok: boolean; message?: string }>
+      sendMessage: (
+        prompt: string,
+        options?: { sessionId?: string | null; model?: string | null },
+      ) => Promise<ClaudeSendResult>
+      onLoginEvent: (cb: (data: ClaudeLoginEvent) => void) => () => void
+    }
   }
 }
+
+export interface ClaudeStatus {
+  installed: boolean
+  authenticated: boolean
+  binaryPath: string | null
+  version: string | null
+  error?: string
+}
+
+export interface ClaudeSendResult {
+  text: string
+  sessionId: string | null
+  durationMs: number
+  model: string | null
+  costUsd: number | null
+  inputTokens: number | null
+  outputTokens: number | null
+}
+
+export type ClaudeLoginEvent =
+  | { kind: 'url'; url: string }
+  | { kind: 'needs-terminal' }
+  | { kind: 'success' }
+  | { kind: 'cancelled' }
+  | { kind: 'timeout' }
+  | { kind: 'error'; message: string }

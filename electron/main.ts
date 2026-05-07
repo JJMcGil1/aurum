@@ -4,6 +4,7 @@ import fs from 'fs'
 import crypto from 'crypto'
 import { Database } from './database'
 import { initAutoUpdater, stopAutoUpdater } from './auto-updater'
+import * as claudeCli from './claude-cli'
 
 app.disableHardwareAcceleration()
 
@@ -53,7 +54,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 20, y: 24 },
+    trafficLightPosition: { x: 18, y: 20 },
     backgroundColor: '#0f0f0f',
     icon: process.env.VITE_DEV_SERVER_URL ? path.join(__dirname, '../build/icon.png') : undefined,
     webPreferences: {
@@ -179,6 +180,20 @@ function registerIpcHandlers() {
   // Savings
   dbHandler('db:getSavingsData', () => db!.getSavingsData())
   dbHandler('db:addSavingsContribution', (_: any, payload: any) => db!.addSavingsContribution(payload))
+
+  // Claude CLI auth + chat
+  ipcMain.handle('claude:getStatus', () => claudeCli.getStatus())
+  ipcMain.handle('claude:startLogin', () => {
+    if (!mainWindow) throw new Error('Window not ready')
+    return claudeCli.startLogin(mainWindow)
+  })
+  ipcMain.handle('claude:cancelLogin', () => claudeCli.cancelLogin())
+  ipcMain.handle('claude:signOut', () => claudeCli.signOut())
+  ipcMain.handle(
+    'claude:sendMessage',
+    (_e, prompt: string, options: { sessionId?: string | null; model?: string | null } = {}) =>
+      claudeCli.sendMessage(prompt, options),
+  )
 
   // Profile image picker
   ipcMain.handle('dialog:pickProfileImage', async () => {

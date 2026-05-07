@@ -89,8 +89,23 @@ const api = {
   pickProfileImage: () => ipcRenderer.invoke('dialog:pickProfileImage'),
 }
 
+const claude = {
+  getStatus: () => ipcRenderer.invoke('claude:getStatus'),
+  startLogin: () => ipcRenderer.invoke('claude:startLogin'),
+  cancelLogin: () => ipcRenderer.invoke('claude:cancelLogin'),
+  signOut: () => ipcRenderer.invoke('claude:signOut'),
+  sendMessage: (prompt: string, options?: { sessionId?: string | null; model?: string | null }) =>
+    ipcRenderer.invoke('claude:sendMessage', prompt, options ?? {}),
+  onLoginEvent: (cb: (data: any) => void) => {
+    const listener = (_e: any, data: any) => cb(data)
+    ipcRenderer.on('claude:login-event', listener)
+    return () => { ipcRenderer.removeListener('claude:login-event', listener) }
+  },
+}
+
 contextBridge.exposeInMainWorld('api', api)
 contextBridge.exposeInMainWorld('updater', updater)
+contextBridge.exposeInMainWorld('claude', claude)
 contextBridge.exposeInMainWorld('electronAPI', {
   getVersion: () => ipcRenderer.invoke('app:getVersion'),
 })

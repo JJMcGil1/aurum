@@ -2,19 +2,19 @@ import { NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard,
   Users,
-  MessageSquare,
   Wallet,
   CalendarDays,
   PiggyBank,
   Target,
   TrendingUp,
   Landmark,
+  Settings as SettingsIcon,
 } from 'lucide-react'
 import { TopBar } from './TopBar'
+import { ChatDock } from './ChatDock'
 
 const railNavItems = [
-  { to: '/', icon: MessageSquare, label: 'Chat', end: true },
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/', icon: LayoutDashboard, label: 'Dashboard', end: true },
   { to: '/accounts', icon: Wallet, label: 'Accounts' },
   { to: '/calendar', icon: CalendarDays, label: 'Calendar' },
   { to: '/budgets', icon: PiggyBank, label: 'Budgets' },
@@ -22,6 +22,7 @@ const railNavItems = [
   { to: '/goals', icon: Target, label: 'Goals' },
   { to: '/net-worth', icon: TrendingUp, label: 'Net Worth' },
   { to: '/family', icon: Users, label: 'Family' },
+  { to: '/settings', icon: SettingsIcon, label: 'Settings' },
 ]
 
 export function Layout() {
@@ -51,6 +52,7 @@ export function Layout() {
             <Outlet />
           </div>
         </main>
+        <ChatDock />
       </div>
     </div>
   )

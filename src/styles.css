@@ -35,7 +35,7 @@
   --red: #ef4444;
   --blue: #3b82f6;
   --rail-width: 64px;
-  --topbar-height: 64px;
+  --topbar-height: 56px;
   --traffic-light-inset: 100px;
   --page-gradient:
     radial-gradient(ellipse 130% 95% at 15% -10%, rgba(212, 168, 67, 0.16) 0%, rgba(212, 168, 67, 0.06) 38%, transparent 72%),
@@ -53,8 +53,14 @@
   --card-bg: rgba(22, 20, 16, 0.5);
   --card-bg-strong: rgba(22, 20, 16, 0.78);
   --card-border: rgba(212, 168, 67, 0.08);
-  --inner-border: rgba(212, 168, 67, 0.28);
-  --card-blur: blur(18px) saturate(150%);
+  --inner-border: rgba(255, 255, 255, 0.10);
+  /* PERF: backdrop-filter is GPU-blur-per-paint and there were 14+ card-blur
+     consumers across the app, plus the chrome elements below. Stacked
+     backdrop-filters force the compositor to re-blur on every paint anywhere
+     in the page (hover, focus, cursor movement triggering :hover styles),
+     which made every micro-interaction feel laggy. Disabled here; card alpha
+     backgrounds carry the look. */
+  --card-blur: none;
   --input-bg: rgba(30, 26, 20, 0.55);
 }
 
@@ -67,15 +73,15 @@
   --text-primary: #1a1a1a;
   --text-secondary: #5a5a5a;
   --text-muted: #8a8a8a;
-  --accent: #b8862f;
-  --accent-hover: #c9962c;
-  --accent-subtle: rgba(184, 134, 47, 0.14);
-  --accent-on: #ffffff;
+  --accent: #d4a843;
+  --accent-hover: #e0b84d;
+  --accent-subtle: rgba(212, 168, 67, 0.12);
+  --accent-on: #1a1a1a;
   --green: #16a34a;
   --red: #dc2626;
   --blue: #2563eb;
   --page-gradient:
-    radial-gradient(ellipse 130% 95% at 15% -10%, rgba(184, 134, 47, 0.22) 0%, rgba(184, 134, 47, 0.08) 38%, transparent 72%),
+    radial-gradient(ellipse 130% 95% at 15% -10%, rgba(212, 168, 67, 0.22) 0%, rgba(212, 168, 67, 0.08) 38%, transparent 72%),
     radial-gradient(ellipse 130% 110% at 105% 115%, rgba(140, 110, 200, 0.20) 0%, rgba(110, 130, 210, 0.08) 45%, transparent 75%),
     radial-gradient(ellipse 90% 70% at 80% 20%, rgba(120, 150, 220, 0.10) 0%, transparent 65%),
     linear-gradient(135deg, #fbf5e2 0%, #f7f1e0 25%, #f3eee2 50%, #ece8de 78%, #e6e2d8 100%);
@@ -88,9 +94,15 @@
     inset 1px 0 0 0 rgba(255, 255, 255, 0.5);
   --card-bg: rgba(255, 252, 244, 0.55);
   --card-bg-strong: rgba(255, 252, 244, 0.85);
-  --card-border: rgba(184, 134, 47, 0.15);
-  --inner-border: rgba(184, 134, 47, 0.35);
-  --card-blur: blur(18px) saturate(150%);
+  --card-border: rgba(212, 168, 67, 0.18);
+  --inner-border: rgba(0, 0, 0, 0.10);
+  /* PERF: backdrop-filter is GPU-blur-per-paint and there were 14+ card-blur
+     consumers across the app, plus the chrome elements below. Stacked
+     backdrop-filters force the compositor to re-blur on every paint anywhere
+     in the page (hover, focus, cursor movement triggering :hover styles),
+     which made every micro-interaction feel laggy. Disabled here; card alpha
+     backgrounds carry the look. */
+  --card-blur: none;
   --input-bg: rgba(255, 250, 235, 0.6);
   --composer-bg: rgba(255, 253, 246, 0.85);
 }
@@ -144,8 +156,6 @@ body {
   width: 18px;
   height: 18px;
   background: var(--topbar-bg);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
   -webkit-mask: radial-gradient(circle 18px at 100% 100%, transparent 17.5px, #000 18px);
           mask: radial-gradient(circle 18px at 100% 100%, transparent 17.5px, #000 18px);
   pointer-events: none;
@@ -170,8 +180,6 @@ body {
   width: var(--rail-width);
   flex-shrink: 0;
   background: var(--topbar-bg);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -261,9 +269,7 @@ body {
   height: var(--topbar-height);
   padding: 0 22px 0 var(--traffic-light-inset);
   background: var(--topbar-bg);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  box-shadow: inset 0 1px 0 0 rgba(212, 168, 67, 0.1);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
   -webkit-app-region: drag;
   flex-shrink: 0;
   z-index: 30;
@@ -282,7 +288,7 @@ body {
 .topbar-brand {
   display: flex;
   align-items: center;
-  height: 44px;
+  height: 40px;
   text-decoration: none;
   border-radius: 10px;
   padding: 0 10px;
@@ -294,7 +300,7 @@ body {
 }
 
 .topbar-logo {
-  height: 32px;
+  height: 28px;
   width: auto;
   display: block;
 }
@@ -945,6 +951,169 @@ tr:hover td {
   height: 100%;
 }
 
+/* Chat dock — flex sibling at the right edge of .app-body.
+   CRITICAL: keep this in flex flow (not absolute overlay). When the dock
+   is in flow it sits at the rightmost edge with the static body gradient
+   behind it; backdrop-filter samples a static surface so steady-state is
+   free. If the dock OVERLAYS main-content, every paint anywhere in the
+   page (hover, focus, blink) invalidates backdrop-filter and the GPU
+   has to re-blur 400×~800px every frame — which made the whole app feel
+   laggy. */
+.chat-dock {
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--topbar-bg);
+  border-left: 1px solid var(--inner-border);
+  border-top: 1px solid var(--inner-border);
+  border-top-left-radius: 18px;
+  z-index: 15;
+  transition: width 200ms cubic-bezier(0.32, 0.72, 0.32, 1);
+  /* Isolate internal layout/paint — interactions inside the dock
+     (typing, scrolling messages) don't invalidate main-content. */
+  contain: layout paint;
+}
+
+.chat-dock.is-dragging {
+  transition: none;
+  user-select: none;
+}
+
+/* Promote to a GPU layer only during the toggle animation; removed on
+   transitionend so steady state holds no permanent layer. */
+.chat-dock.is-animating {
+  will-change: width;
+}
+
+.chat-dock.is-closed {
+  border-left-color: transparent;
+  border-top-color: transparent;
+  pointer-events: none;
+}
+
+.chat-dock-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 4;
+}
+
+.chat-dock-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2px;
+  width: 2px;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.chat-dock-resizer:hover::after,
+.chat-dock.is-dragging .chat-dock-resizer::after {
+  background: var(--accent);
+}
+
+.chat-dock.is-closed .chat-dock-resizer {
+  display: none;
+}
+
+.chat-dock-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 10px 18px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.chat-dock-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.chat-dock-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.chat-dock-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.chat-dock-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Floating chat bubble (visible when dock closed) */
+.chat-fab {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid var(--inner-border);
+  background: var(--accent);
+  color: var(--accent-on);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow:
+    0 12px 32px -10px rgba(0, 0, 0, 0.35),
+    0 4px 10px -4px rgba(0, 0, 0, 0.25);
+  transition:
+    transform 220ms cubic-bezier(0.32, 0.72, 0.32, 1),
+    opacity 180ms ease,
+    background 0.15s ease;
+  z-index: 100;
+  transform: translateZ(0) scale(1);
+  opacity: 1;
+}
+
+.chat-fab.is-hidden {
+  pointer-events: none;
+  opacity: 0;
+  transform: translateZ(0) scale(0.6);
+}
+
+.chat-fab:hover:not(.is-hidden) {
+  background: var(--accent-hover);
+  transform: translateZ(0) scale(1.04);
+}
+
+.chat-fab svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2;
+}
+
 .chat-scroll {
   flex: 1;
   overflow-y: auto;
@@ -1090,35 +1259,45 @@ tr:hover td {
 }
 
 .chat-composer {
-  border-top: 1px solid var(--border);
-  background: var(--composer-bg);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: transparent;
   padding: 14px 24px 18px;
   flex-shrink: 0;
 }
 
-.chat-composer-inner {
+.chat-composer-card {
   max-width: 760px;
   margin: 0 auto;
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
   background: var(--card-bg);
   backdrop-filter: var(--card-blur);
   -webkit-backdrop-filter: var(--card-blur);
   border: 1px solid var(--card-border);
   border-radius: 14px;
-  padding: 8px 8px 8px 14px;
+  padding: 4px 12px 8px;
   transition: border-color 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.chat-composer-inner:focus-within {
+.chat-composer-card:focus-within {
   border-color: var(--accent);
+}
+
+.chat-composer-inner {
+  display: flex;
+}
+
+.chat-composer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0 2px;
 }
 
 .chat-input {
   flex: 1;
+  width: 100%;
   background: transparent;
   border: none;
   outline: none;
@@ -1127,7 +1306,7 @@ tr:hover td {
   font-family: inherit;
   font-size: 14px;
   line-height: 1.5;
-  padding: 8px 0;
+  padding: 10px 0 4px;
   max-height: 200px;
 }
 
@@ -1170,6 +1349,460 @@ tr:hover td {
   font-size: 11px;
   color: var(--text-muted);
   text-align: center;
+}
+
+/* Model picker (composer-mounted) */
+.model-picker {
+  position: relative;
+}
+
+.model-picker-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--card-border);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.model-picker-trigger:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.model-picker-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.model-picker-trigger-label {
+  letter-spacing: 0.005em;
+}
+
+.model-picker-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  min-width: 320px;
+  background: var(--card-bg-strong, var(--card-bg));
+  backdrop-filter: var(--card-blur);
+  -webkit-backdrop-filter: var(--card-blur);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+  padding: 6px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.model-picker-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 6px;
+  font-size: 12px;
+}
+
+.model-picker-header-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.model-picker-header-version {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.model-picker-status-dot {
+  margin-left: auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.model-picker-status-dot.is-connected {
+  background: rgb(60, 160, 90);
+  box-shadow: 0 0 0 3px rgba(60, 160, 90, 0.18);
+}
+
+.model-picker-divider {
+  height: 1px;
+  background: var(--card-border);
+  margin: 2px 6px 4px;
+}
+
+.model-picker-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text-primary);
+  transition: background 0.12s ease;
+}
+
+.model-picker-row:hover {
+  background: var(--bg-tertiary);
+}
+
+.model-picker-row.is-active {
+  background: var(--accent-subtle);
+}
+
+.model-picker-row-icon {
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.model-picker-row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.model-picker-row-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.model-picker-row-desc {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.model-picker-row-check {
+  color: var(--accent);
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.claude-mark {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.chat-reply-meta {
+  margin-top: 4px;
+  margin-left: 2px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.01em;
+}
+
+.chat-bubble-error {
+  background: rgba(220, 80, 80, 0.12) !important;
+  border: 1px solid rgba(220, 80, 80, 0.4);
+  color: var(--text-primary);
+}
+
+.chat-primary-btn {
+  background: var(--accent);
+  color: #0a0a0a;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s ease;
+}
+
+.chat-primary-btn:hover {
+  background: var(--accent-hover);
+}
+
+.chat-secondary-btn {
+  background: var(--card-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.chat-secondary-btn:hover {
+  border-color: var(--accent);
+}
+
+.chat-login-status {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  max-width: 480px;
+}
+
+.chat-login-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.chat-login-error {
+  margin-top: 14px;
+  font-size: 12px;
+  color: rgb(220, 80, 80);
+  max-width: 480px;
+  text-align: center;
+}
+
+.chat-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.chat-link:hover {
+  text-decoration: underline;
+}
+
+.chat-code-block {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--text-primary);
+  margin: 4px 0 14px;
+  user-select: all;
+}
+
+.chat-spinner {
+  width: 28px;
+  height: 28px;
+  color: var(--text-muted);
+  animation: chat-spin 1s linear infinite;
+}
+
+.chat-spinner-sm {
+  width: 14px;
+  height: 14px;
+  animation: chat-spin 1s linear infinite;
+}
+
+@keyframes chat-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Settings */
+.settings-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 4px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.settings-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+}
+
+.settings-header p {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin: 0;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
+.settings-section-head h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.settings-card {
+  padding: 18px;
+  background: var(--card-bg);
+  backdrop-filter: var(--card-blur);
+  -webkit-backdrop-filter: var(--card-blur);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.settings-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid;
+}
+
+.settings-badge-ok {
+  color: rgb(60, 160, 90);
+  border-color: rgba(60, 160, 90, 0.4);
+  background: rgba(60, 160, 90, 0.08);
+}
+
+.settings-badge-warn {
+  color: rgb(200, 140, 50);
+  border-color: rgba(200, 140, 50, 0.4);
+  background: rgba(200, 140, 50, 0.08);
+}
+
+.settings-meta-pill {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--card-border);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.settings-help {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.settings-defs {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 6px 14px;
+  margin: 0;
+  font-size: 12.5px;
+}
+
+.settings-defs > div {
+  display: contents;
+}
+
+.settings-defs dt {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.settings-defs dd {
+  margin: 0;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.settings-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.settings-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.settings-radio-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.settings-radio {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.settings-radio:hover {
+  border-color: var(--accent);
+}
+
+.settings-radio.is-active {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.settings-radio input {
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.settings-radio-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-radio-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-radio-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.45;
 }
 
 /* Calendar */
