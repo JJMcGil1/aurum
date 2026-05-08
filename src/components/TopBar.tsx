@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Search, Bell, Sun, Moon } from 'lucide-react'
-import aurumLogo from '../assets/aurum-logo.svg'
+import { AurumLogo } from './AurumLogo'
 import { useTheme } from '../lib/theme'
 
 export function TopBar() {
@@ -11,7 +11,7 @@ export function TopBar() {
     <header className="topbar">
       <div className="topbar-left">
         <Link to="/" className="topbar-brand no-drag" title="Home">
-          <img src={aurumLogo} alt="Aurum" className="topbar-logo" />
+          <AurumLogo className="topbar-logo" />
         </Link>
       </div>
       <div className="topbar-right no-drag">

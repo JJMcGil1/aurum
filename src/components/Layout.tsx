@@ -61,9 +61,9 @@ export function Layout() {
 
   return (
     <div className="app-layout">
-      <TopBar />
       <div className="app-body">
         <aside className="left-rail">
+          <div className="rail-top-spacer" />
           <nav className="left-rail-nav">{railNavItems.map(renderRailLink)}</nav>
           <nav className="left-rail-nav left-rail-nav-bottom">
             {renderRailLink(settingsNavItem)}
@@ -71,12 +71,17 @@ export function Layout() {
             <ProfileTile />
           </nav>
         </aside>
-        <main className="main-content">
-          <div className="main-content-body">
-            <Outlet />
+        <div className="main-column">
+          <TopBar />
+          <div className="main-row">
+            <main className="main-content">
+              <div className="main-content-body">
+                <Outlet />
+              </div>
+            </main>
+            {!isChatPage && <ChatDock />}
           </div>
-        </main>
-        {!isChatPage && <ChatDock />}
+        </div>
       </div>
     </div>
   )

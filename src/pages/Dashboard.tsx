@@ -46,14 +46,21 @@ export function Dashboard() {
           {data.monthlyTrend.some(m => m.expenses > 0) ? (
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={data.monthlyTrend}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-                <XAxis dataKey="month" tick={{ fill: '#666', fontSize: 12 }} />
-                <YAxis tick={{ fill: '#666', fontSize: 12 }} />
+                <defs>
+                  <linearGradient id="barFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.95} />
+                    <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.35} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--inner-border)" />
+                <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
                 <Tooltip
-                  contentStyle={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, fontSize: 13 }}
-                  labelStyle={{ color: '#a0a0a0' }}
+                  cursor={{ fill: 'var(--accent-subtle)' }}
+                  contentStyle={{ background: 'var(--card-bg-strong)', border: '1px solid var(--card-border)', borderRadius: 10, fontSize: 13, backdropFilter: 'blur(12px)' }}
+                  labelStyle={{ color: 'var(--text-secondary)' }}
                 />
-                <Bar dataKey="expenses" fill="var(--accent)" radius={[4, 4, 0, 0]} name="Expenses" />
+                <Bar dataKey="expenses" fill="url(#barFill)" radius={[6, 6, 0, 0]} name="Expenses" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
