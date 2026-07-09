@@ -24,6 +24,7 @@ import { ChatThreadHeader } from '@/components/ChatThreadHeader'
 import { ToolCallCard, type ToolCall } from '@/components/chat/ToolCallCard'
 import { MarkdownText } from '@/components/chat/MarkdownText'
 import { initials } from '@/components/chat/tools/format'
+import { AurumLogo } from '@/components/AurumLogo'
 
 const ACTIVE_THREAD_KEY = 'aurum.activeChatThreadId'
 
@@ -61,7 +62,7 @@ const SUGGESTIONS = [
 
 type LoginPhase = 'idle' | 'starting' | 'awaiting-browser' | 'needs-terminal' | 'polling'
 
-export function Chat() {
+export function Chat({ onClose }: { onClose?: () => void } = {}) {
   const [status, setStatus] = useState<ClaudeStatus | null>(null)
   const [turns, setTurns] = useState<Turn[]>([])
   const [draft, setDraft] = useState('')
@@ -78,7 +79,6 @@ export function Chat() {
   })
   const [activeTitle, setActiveTitle] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   // Mirror of `turns` for sync reads from event handlers — React's setState
   // updater lambdas are not guaranteed to run before the next statement, so
   // we can't rely on closure-capturing the "final" turn from inside one.
@@ -461,13 +461,6 @@ export function Chat() {
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight
   }, [turns])
 
-  useEffect(() => {
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 200)}px`
-  }, [draft])
-
   const startLogin = async () => {
     setLoginError(null)
     setOauthUrl(null)
@@ -600,6 +593,7 @@ export function Chat() {
           onNewChat={handleNewChat}
           onSelectThread={handleSelectThread}
           onDeleteThread={handleDeleteThread}
+          onClose={onClose}
         />
       )}
       <div className="chat-scroll" ref={scrollRef}>
@@ -653,7 +647,6 @@ export function Chat() {
         <div className={`chat-composer-card${streaming ? ' is-working' : ''}`}>
           <div className="chat-composer-inner">
             <textarea
-              ref={textareaRef}
               className="chat-input"
               placeholder={authed ? 'Message Aurum...' : 'Connect Claude to start chatting'}
               rows={1}
@@ -752,10 +745,13 @@ function TurnView({ turn, profile }: { turn: Turn; profile: FamilyMember | null 
     return (
       <div className="chat-message chat-message-user">
         <div className="chat-user-stack">
+          <div className="chat-user-header">
+            <div className="chat-user-meta">{formatChatTime(turn.createdAt)}</div>
+            <span className="chat-author-name">You</span>
+            <UserAvatar profile={profile} />
+          </div>
           <div className="chat-bubble">{text}</div>
-          <div className="chat-user-meta">{formatChatTime(turn.createdAt)}</div>
         </div>
-        <UserAvatar profile={profile} />
       </div>
     )
   }
@@ -765,6 +761,13 @@ function TurnView({ turn, profile }: { turn: Turn; profile: FamilyMember | null 
 
   return (
     <div className="chat-message chat-message-assistant">
+      <div className="chat-assistant-header">
+        <div className="chat-assistant-avatar">
+          <AurumLogo iconOnly />
+        </div>
+        <span className="chat-author-name">Aurum</span>
+        <span className="chat-user-meta">{formatChatTime(turn.createdAt)}</span>
+      </div>
       {turn.error && (
         <div className="chat-bubble chat-bubble-error">{turn.error}</div>
       )}

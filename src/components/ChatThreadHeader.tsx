@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { MessageSquarePlus, History, Trash2, MessageSquare } from 'lucide-react'
+import { MessageSquarePlus, History, Trash2, MessageSquare, X } from 'lucide-react'
 import type { ChatThreadSummary } from '@/types'
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
   onNewChat: () => void
   onSelectThread: (id: string) => void
   onDeleteThread: (id: string) => void
+  onClose?: () => void
 }
 
 export function ChatThreadHeader({
@@ -20,6 +21,7 @@ export function ChatThreadHeader({
   onNewChat,
   onSelectThread,
   onDeleteThread,
+  onClose,
 }: Props) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -124,6 +126,18 @@ export function ChatThreadHeader({
             </div>
           )}
         </div>
+
+        {onClose && (
+          <button
+            type="button"
+            className="cth-btn cth-btn-icon"
+            onClick={onClose}
+            aria-label="Close chat"
+            title="Close chat"
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
     </div>
   )

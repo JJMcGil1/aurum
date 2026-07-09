@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { MessageSquare, X } from 'lucide-react'
+import { MessageSquare } from 'lucide-react'
 import { Chat } from '@/pages/Chat'
 
 // Memoized so ChatDock's open/width state changes don't re-render the
@@ -50,6 +50,8 @@ export function ChatDock() {
     dockRef.current?.classList.add('is-animating')
     setOpen(next)
   }, [])
+
+  const handleClose = useCallback(() => toggle(false), [toggle])
 
   const onTransitionEnd = useCallback((e: React.TransitionEvent<HTMLElement>) => {
     if (e.target !== dockRef.current) return
@@ -126,24 +128,8 @@ export function ChatDock() {
           aria-orientation="vertical"
           aria-label="Resize chat panel"
         />
-        <header className="chat-dock-header">
-          <div className="chat-dock-title">
-            <MessageSquare size={14} />
-            <span>Chat</span>
-          </div>
-          <button
-            type="button"
-            className="chat-dock-close"
-            onClick={() => toggle(false)}
-            aria-label="Close chat"
-            title="Close chat"
-            tabIndex={open ? 0 : -1}
-          >
-            <X size={14} />
-          </button>
-        </header>
         <div className="chat-dock-body">
-          <MemoChat />
+          <MemoChat onClose={handleClose} />
         </div>
       </aside>
 
