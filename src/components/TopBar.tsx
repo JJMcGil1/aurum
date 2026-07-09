@@ -10,8 +10,8 @@ export function TopBar() {
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <Link to="/" className="topbar-brand no-drag" title="Home">
-          <AurumLogo className="topbar-logo" />
+        <Link to="/" className="topbar-brand no-drag" title="Home" aria-label="Aurum home">
+          <AurumLogo iconOnly className="topbar-mark" />
         </Link>
       </div>
       <div className="topbar-right no-drag">

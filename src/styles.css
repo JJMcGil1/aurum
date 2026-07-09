@@ -459,18 +459,22 @@ td .num,
   align-items: center;
   height: 40px;
   text-decoration: none;
-  border-radius: 10px;
   padding: 0 10px;
-  transition: background 0.15s ease;
-}
-
-.topbar-brand:hover {
-  background: var(--bg-hover);
 }
 
 .topbar-logo {
   height: 30px;
   width: auto;
+  display: block;
+}
+
+/* Compact stacked-gold-bars mark for the topbar — the same isometric bar
+   stack used in the app icon, ported to a 64×64 viewBox with simplified
+   gradients. Colors are baked into the SVG (always gold, theme-independent)
+   so we don't set a `color` here. */
+.topbar-mark {
+  width: 30px;
+  height: 30px;
   display: block;
 }
 
