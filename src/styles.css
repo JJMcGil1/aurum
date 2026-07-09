@@ -22,24 +22,28 @@
 
 :root,
 :root[data-theme='dark'] {
-  /* Surfaces — cool ink, not warm brown */
-  --bg-primary: #08090e;
-  --bg-secondary: #0d0e15;
-  --bg-tertiary: #14151f;
-  --bg-hover: #1c1d2a;
-  --border: #23243340;
-  --text-primary: #ebe9f5;
-  --text-secondary: #9d9bb0;
-  --text-muted: #5e5d72;
+  /* Neutral grays — classic dark mode, no blue-slate cast. Three-tier
+     surface hierarchy: chrome (frame, darkest) < panel (lifted page) <
+     card (top content layer, brightest). */
+  --bg-primary: #0b0b0b;
+  --bg-secondary: #161616;
+  --bg-tertiary: #1f1f1f;
+  --bg-hover: #262626;
+  --border: #2a2a2a;
+  --text-primary: #ededed;
+  --text-secondary: #9a9a9a;
+  --text-muted: #6e6e6e;
 
-  /* Primary UI accent — iolite violet (modern, premium, NOT yellow) */
-  --accent: #a78bfa;
-  --accent-hover: #b9a3ff;
-  --accent-rgb: 167, 139, 250;
-  --accent-subtle: rgba(167, 139, 250, 0.12);
-  --accent-on: #0a0a0f;
+  /* Primary UI accent — refined warm gold. Brighter and less saturated than
+     mustard; reads as "polished metal" rather than "ochre paint." Used for
+     active nav, stat highlights, and data-viz fills. */
+  --accent: #e6c460;
+  --accent-hover: #efd278;
+  --accent-rgb: 230, 196, 96;
+  --accent-subtle: rgba(230, 196, 96, 0.14);
+  --accent-on: #1a1722;
 
-  /* Brand gold — preserved for the Aurum logo + "wealth" details only */
+  /* Brand gold — same family as accent, used for the Aurum mark. */
   --brand-gold: #e6c66a;
   --brand-gold-rgb: 230, 198, 106;
 
@@ -52,32 +56,37 @@
   --topbar-height: 56px;
   --traffic-light-inset: 100px;
 
-  /* Three distinct surface planes — body (deepest), chrome (mid), panel (lifted).
-     Each ~3-4% lighter than the one below. Reads as real architecture, not flat ink. */
-  --surface-void:   #050609;   /* body */
-  --surface-chrome: #13141d;   /* topbar + rail (lifted) */
-  --surface-panel:  #15161f;   /* main content panel */
+  /* Three-tier surface system. Chrome is LIFTED above panel (brighter),
+     mirroring light mode. Card is the top layer (brightest), clearly raised
+     above the panel page. Each step ~6-8% in lightness so hierarchy reads
+     immediately without harsh contrast. */
+  --surface-void:   #060606;   /* body, behind everything */
+  --surface-chrome: #0a0a0a;   /* rail + topbar — dark frame, recedes */
+  --surface-panel:  #131313;   /* page — lifted above chrome, neutral gray */
+  --surface-card:   #1c1c1c;   /* lifted content cards — neutral gray */
 
   --page-gradient:
-    linear-gradient(180deg, #07080f 0%, #06070d 60%, #050609 100%);
+    linear-gradient(180deg, #0a0a0a 0%, #060606 100%);
 
   --topbar-bg: var(--surface-chrome);
-  --topbar-shadow:
-    0 6px 18px -10px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
-  --rail-shadow:
-    6px 0 18px -10px rgba(0, 0, 0, 0.6),
-    inset 1px 0 0 0 rgba(255, 255, 255, 0.03);
 
-  --composer-bg: rgba(255, 255, 255, 0.045);
+  --composer-bg: rgba(255, 255, 255, 0.04);
   --composer-border: rgba(255, 255, 255, 0.08);
 
-  --card-bg: rgba(20, 21, 31, 0.55);
-  --card-bg-strong: rgba(20, 21, 31, 0.82);
-  --card-border: rgba(167, 139, 250, 0.10);
+  /* Cards: subtle vertical gradient (slight top→bottom darkening) for depth,
+     above a solid lifted slate. Reads as a polished raised surface instead
+     of a flat fill. Border bumped to 0.08 alpha so card edges are clearly
+     defined against the panel without feeling harsh. */
+  --card-bg: linear-gradient(180deg, #1e1e1e 0%, #181818 100%);
+  --card-bg-strong: #232323;
+  --card-border: rgba(255, 255, 255, 0.08);
   --inner-border: rgba(255, 255, 255, 0.08);
   --card-blur: none;
-  --input-bg: rgba(20, 22, 34, 0.55);
+  --input-bg: rgba(255, 255, 255, 0.04);
+
+  --card-hover-tint: rgba(255, 255, 255, 0.03);
+  --card-hover-tint-strong: rgba(255, 255, 255, 0.05);
+  --card-hover-border: rgba(255, 255, 255, 0.14);
 }
 
 :root[data-theme='light'] {
@@ -91,10 +100,14 @@
   --text-secondary: #5a5668;
   --text-muted: #8a86a0;
 
-  --accent: #7c3aed;
-  --accent-hover: #6d28d9;
-  --accent-rgb: 124, 58, 237;
-  --accent-subtle: rgba(124, 58, 237, 0.10);
+  /* Refined warm gold for light mode — pulled darker than the dark-mode
+     accent for contrast against white chrome and cards. Not mustard:
+     elevated saturation control, slight cool bias to sit comfortably
+     beside the cool-slate panel gradient. */
+  --accent: #c8a03b;
+  --accent-hover: #b88f2c;
+  --accent-rgb: 200, 160, 59;
+  --accent-subtle: rgba(200, 160, 59, 0.12);
   --accent-on: #ffffff;
 
   --brand-gold: #b8902f;
@@ -127,12 +140,16 @@
 
   --card-bg: rgba(255, 255, 255, 0.62);
   --card-bg-strong: rgba(255, 255, 255, 0.92);
-  --card-border: rgba(124, 58, 237, 0.14);
+  --card-border: rgba(var(--accent-rgb), 0.14);
   --inner-border: rgba(0, 0, 0, 0.08);
   --card-blur: none;
   --input-bg: rgba(255, 255, 255, 0.7);
   --composer-bg: rgba(255, 255, 255, 0.85);
   --composer-border: rgba(0, 0, 0, 0.08);
+
+  --card-hover-tint: rgba(26, 23, 34, 0.035);
+  --card-hover-tint-strong: rgba(26, 23, 34, 0.06);
+  --card-hover-border: rgba(var(--accent-rgb), 0.32);
 }
 
 html, body, #root {
@@ -242,6 +259,10 @@ td .num,
   flex: 1;
   display: flex;
   min-height: 0;
+  /* Clip the panel-extension pseudo-element on .main-content (see below)
+     so it never overruns when the chat dock is closed and main-content
+     fills the full row width. */
+  overflow: hidden;
 }
 
 /* Reserves the macOS traffic-lights area inside the rail, full-height layout.
@@ -260,27 +281,48 @@ td .num,
   min-height: 0;
   position: relative;
   z-index: 1;
-  background:
-    linear-gradient(135deg, #1f1d30 0%, #181822 45%, #111219 100%);
+  /* Modern minimal: lifted bright panel sitting on top of the darker chrome
+     frame — same elevation logic as light mode (chrome below, panel above),
+     just inverted in luminance. Slight violet undertone ties to iolite accent.
+     No edge hairline in dark mode — the luminance step against the darker
+     chrome already delineates the panel; an inset highlight reads as a
+     bright divider line, which the design intentionally avoids. */
+  background: var(--surface-panel);
   border-top-left-radius: 22px;
-  /* The lift cue lives HERE as inset shadows along the panel's top + left
-     edges, which curve naturally around the rounded corner. This is the same
-     visual as "chrome casting outward shadow onto panel" but rendered as a
-     single L-shaped inner shadow on one element — no overlap pooling at the
-     inner-L corner where two separate drop-shadows would otherwise collide. */
-  box-shadow:
-    inset 0 8px 12px -6px rgba(0, 0, 0, 0.55),
-    inset 8px 0 12px -6px rgba(0, 0, 0, 0.45);
+  box-shadow: none;
 }
 
 :root[data-theme='light'] .main-content {
-  /* Page beneath the chrome — warm cream, slightly darker than the white
-     chrome above so the lift hierarchy reads correctly. */
-  background:
-    linear-gradient(135deg, #f3f1ea 0%, #efece5 45%, #ebe8df 100%);
+  /* Clean off-white with a whisper of iolite — single tone, no vertical
+     gradient. Minimalist canvas; the cards do the work. */
+  background: #f3f2f6;
   box-shadow:
-    inset 0 8px 12px -6px rgba(40, 30, 60, 0.28),
-    inset 8px 0 12px -6px rgba(40, 30, 60, 0.22);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.9),
+    inset 1px 0 0 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 0 1px rgba(40, 30, 60, 0.04);
+}
+
+/* Panel-colored strip extending past main-content's right edge — sits
+   underneath the chat dock's TOP-LEFT rounded carve so that corner reads
+   as a seamless continuation of the page canvas (no chrome step at the
+   join with main-content). Stops 22px short of the bottom on purpose:
+   the dock's bottom-left curve is meant to float above the chrome as a
+   visible rounded cap, so we let chrome show through that 22px square.
+   Clipped by .main-row's overflow:hidden when the dock is closed. */
+.main-content::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 22px;
+  right: -22px;
+  width: 22px;
+  background: var(--surface-panel);
+  z-index: -1;
+  pointer-events: none;
+}
+
+:root[data-theme='light'] .main-content::after {
+  background: #f3f2f6;
 }
 
 /* Left icon nav rail. Lifted ABOVE the page panel — casts a drop shadow
@@ -298,17 +340,10 @@ td .num,
   gap: 4px;
   position: relative;
   z-index: 20;
-  /* Only a 1px contact line on the rail's right edge — no ambient drop shadow.
-     The topbar owns the cast shadow for the whole chrome L; if the rail also
-     cast a rightward shadow, the two would pool darkly at the inner-L corner
-     and read as the topbar + rail overlapping each other. The color contrast
-     between white chrome and cream panel + this 1px line is enough to
-     delineate the rail's right edge below the topbar. */
-  box-shadow: 1px 0 0 0 rgba(0, 0, 0, 0.22);
-}
-
-:root[data-theme='light'] .left-rail {
-  box-shadow: 1px 0 0 0 rgba(40, 30, 60, 0.08);
+  /* No box-shadow — the chrome hairlines at y=56 (topbar bottom) and x=64
+     (rail right) were intersecting the panel's curved corner and reading as
+     a divider line traced along the curve. Color contrast between white
+     chrome and cream panel is enough to delineate the rail's right edge. */
 }
 
 .left-rail-nav {
@@ -345,12 +380,12 @@ td .num,
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 10px;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   text-decoration: none;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 120ms ease-out, color 120ms ease-out;
   -webkit-app-region: no-drag;
 }
 
@@ -360,31 +395,18 @@ td .num,
 }
 
 .rail-link.active {
-  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.18), rgba(var(--accent-rgb), 0.08));
+  background: rgba(var(--accent-rgb), 0.10);
   color: var(--accent);
-  box-shadow:
-    inset 0 0 0 1px rgba(var(--accent-rgb), 0.25),
-    0 6px 18px -10px rgba(var(--accent-rgb), 0.6);
 }
 
-/* Pill indicator on the left edge of the active nav item — a small but
-   distinctive detail that signals "you are here" with the accent color. */
-.rail-link.active::before {
-  content: '';
-  position: absolute;
-  left: -10px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 18px;
-  border-radius: 0 3px 3px 0;
-  background: var(--accent);
-  box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.6);
+.rail-link.active:hover {
+  background: rgba(var(--accent-rgb), 0.14);
 }
 
 .rail-link svg {
   width: 20px;
   height: 20px;
+  stroke-width: 1.75;
 }
 
 .rail-label {
@@ -434,18 +456,14 @@ td .num,
      shadow along its top edge, which already creates the "topbar lifted
      above page" reading. This element keeps just a thin top highlight and
      a 1px contact line on its bottom edge for chrome definition. */
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
-    0 1px 0 0 rgba(0, 0, 0, 0.10);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
   -webkit-app-region: drag;
   flex-shrink: 0;
   z-index: 30;
 }
 
 :root[data-theme='light'] .topbar {
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.6),
-    0 1px 0 0 rgba(40, 30, 60, 0.06);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.6);
 }
 
 .topbar-left {
@@ -2567,8 +2585,8 @@ tr:hover td {
   width: 340px;
   max-height: 420px;
   overflow-y: auto;
-  background: linear-gradient(180deg, #16171f 0%, #101119 100%);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, #1e1e1e 0%, #181818 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
   padding: 6px;
   z-index: 60;
@@ -3752,10 +3770,10 @@ tr:hover td {
 
 .tool-card {
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: linear-gradient(180deg, #16171f 0%, #101119 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, #1e1e1e 0%, #181818 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 1px 2px rgba(0, 0, 0, 0.3),
     0 8px 24px -16px rgba(0, 0, 0, 0.5);
   overflow: hidden;
