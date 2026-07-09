@@ -844,22 +844,47 @@ tr:hover td {
   font-size: 26px;
 }
 
-/* Modal */
+/* Modal
+   PERF: backdrop-filter stays at a constant blur(2px) for the entire life of
+   the overlay — never animated, never paired with an opacity transition on
+   the same element. Both of those force the browser to re-blur the viewport
+   every frame, which is what made earlier iterations feel laggy.
+   Instead we animate background-color (transparent → dim). The blur layer
+   is computed once when the overlay mounts and is cached by the compositor
+   while the page behind it is static; the only per-frame work during the
+   transition is repainting the overlay's own translucent fill, which is
+   cheap. The dialog handles its own transform + opacity rise so the user
+   perceives a fade-in even though the overlay's opacity never changes.
+
+   Layer-promotion hints (translateZ + isolation + will-change) tell the
+   compositor to pre-allocate this element's own GPU layer at mount instead
+   of figuring it out mid-paint — that's what removes the stutter when the
+   blur first appears. will-change is scoped to the overlay's lifetime
+   (the element only exists while a modal is open), so we don't pay the
+   permanent-layer cost when no modal is up. */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background-color: rgba(0, 0, 0, 0);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  transition: background-color 160ms ease-out;
+  transform: translateZ(0);
+  isolation: isolate;
+  will-change: backdrop-filter;
+  contain: layout paint;
+}
+
+.modal-overlay.is-open {
+  background-color: rgba(0, 0, 0, 0.5);
 }
 
 .modal {
   background: var(--card-bg-strong);
-  backdrop-filter: var(--card-blur);
-  -webkit-backdrop-filter: var(--card-blur);
   border: 1px solid var(--card-border);
   border-radius: 16px;
   padding: 24px;
@@ -867,6 +892,23 @@ tr:hover td {
   max-width: 480px;
   max-height: 85vh;
   overflow-y: auto;
+  transform: translateY(6px) scale(0.97);
+  opacity: 0;
+  transition:
+    transform 180ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 140ms ease-out;
+}
+
+.modal-overlay.is-open .modal {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay,
+  .modal {
+    transition-duration: 0ms;
+  }
 }
 
 .modal-title {
@@ -1098,6 +1140,120 @@ tr:hover td {
   gap: 4px;
 }
 
+/* Clickable card affordance — inset shadow tint, smooth transition,
+   theme-aware. Avoids gradient→solid background interpolation which
+   browsers cannot animate. */
+.card-clickable {
+  cursor: pointer;
+  outline: none;
+  transition: box-shadow 0.16s ease-out, border-color 0.16s ease-out;
+}
+
+.card-clickable:hover {
+  border-color: var(--card-hover-border);
+  box-shadow: inset 0 0 0 999px var(--card-hover-tint);
+}
+
+.card-clickable:active {
+  box-shadow: inset 0 0 0 999px var(--card-hover-tint-strong);
+}
+
+.card-clickable:focus-visible {
+  border-color: var(--card-hover-border);
+  box-shadow:
+    inset 0 0 0 999px var(--card-hover-tint),
+    0 0 0 3px var(--accent-subtle);
+}
+
+/* Card kebab menu */
+.card-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.card-menu-trigger:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.card-menu-trigger.is-open {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.card-menu-dropdown {
+  position: fixed;
+  z-index: 1000;
+  background: var(--surface-card, var(--bg-secondary));
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: card-menu-in 0.12s ease-out;
+}
+
+@keyframes card-menu-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.card-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: left;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.card-menu-item:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.card-menu-item.is-danger {
+  color: var(--red);
+}
+
+.card-menu-item.is-danger:hover:not(:disabled) {
+  background: rgba(251, 113, 133, 0.12);
+}
+
+.card-menu-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.card-menu-item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: currentColor;
+  opacity: 0.85;
+}
+
 /* Accounts grid */
 .accounts-grid {
   display: grid;
@@ -1115,9 +1271,6 @@ tr:hover td {
   transition: border-color 0.15s ease;
 }
 
-.account-card:hover {
-  border-color: var(--accent);
-}
 
 .account-card-header {
   display: flex;

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { formatCurrency } from '../lib/format'
 import type { Account, FamilyMember } from '../types'
+import { ModalOverlay } from '../components/ModalOverlay'
+import { CardMenu } from '../components/CardMenu'
 
 const ACCOUNT_TYPES = [
   { value: 'checking', label: 'Checking' },
@@ -109,16 +111,25 @@ export function Accounts() {
       {accounts.length > 0 ? (
         <div className="accounts-grid">
           {accounts.map(acc => (
-            <div key={acc.id} className="account-card">
+            <div
+              key={acc.id}
+              className="account-card card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => openEdit(acc)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEdit(acc) } }}
+            >
               <div className="account-card-header">
                 <div>
                   <div className="account-name">{acc.name}</div>
                   {acc.institution && <div className="account-institution">{acc.institution}</div>}
                 </div>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <button className="btn btn-ghost btn-sm" onClick={() => openEdit(acc)}><Pencil size={14} /></button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => remove(acc.id)}><Trash2 size={14} /></button>
-                </div>
+                <CardMenu
+                  items={[
+                    { label: 'Edit', icon: <Pencil size={14} />, onClick: () => openEdit(acc) },
+                    { label: 'Delete', icon: <Trash2 size={14} />, onClick: () => remove(acc.id), danger: true },
+                  ]}
+                />
               </div>
               <div className="account-type">{acc.type.replace('_', ' ')}</div>
               <div className={`account-balance ${['credit_card', 'loan'].includes(acc.type) ? 'amount-negative' : 'amount-positive'}`} style={{ marginTop: 12 }}>
@@ -138,10 +149,9 @@ export function Accounts() {
         </div>
       )}
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2 className="modal-title">{editing ? 'Edit Account' : 'New Account'}</h2>
+      <ModalOverlay open={showModal} onClose={() => setShowModal(false)}>
+        <div className="modal" onClick={e => e.stopPropagation()}>
+          <h2 className="modal-title">{editing ? 'Edit Account' : 'New Account'}</h2>
 
             <div className="form-group">
               <label className="form-label">Account Name</label>
@@ -179,9 +189,8 @@ export function Accounts() {
               <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={save} disabled={!form.name}>{editing ? 'Save' : 'Add Account'}</button>
             </div>
-          </div>
         </div>
-      )}
+      </ModalOverlay>
     </div>
   )
 }

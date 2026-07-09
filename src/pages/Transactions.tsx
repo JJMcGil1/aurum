@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Trash2, Pencil } from 'lucide-react'
 import { formatCurrency, formatDate, todayISO } from '../lib/format'
 import type { Transaction, Account, Category, FamilyMember } from '../types'
+import { ModalOverlay } from '../components/ModalOverlay'
 
 export function Transactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -182,10 +183,9 @@ export function Transactions() {
         )}
       </div>
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2 className="modal-title">{editing ? 'Edit Transaction' : 'New Transaction'}</h2>
+      <ModalOverlay open={showModal} onClose={() => setShowModal(false)}>
+        <div className="modal" onClick={e => e.stopPropagation()}>
+          <h2 className="modal-title">{editing ? 'Edit Transaction' : 'New Transaction'}</h2>
 
             <div className="form-row">
               <div className="form-group">
@@ -249,9 +249,8 @@ export function Transactions() {
                 {editing ? 'Save' : 'Add Transaction'}
               </button>
             </div>
-          </div>
         </div>
-      )}
+      </ModalOverlay>
     </div>
   )
 }

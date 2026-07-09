@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Plus, Trash2, Pencil } from 'lucide-react'
 import { formatCurrency } from '../lib/format'
 import type { Budget, BudgetPeriod, Category } from '../types'
+import { ModalOverlay } from '../components/ModalOverlay'
+import { CardMenu } from '../components/CardMenu'
 
 const PERIODS: { value: BudgetPeriod; label: string }[] = [
   { value: 'weekly', label: 'Weekly' },
@@ -97,7 +99,14 @@ export function Budgets() {
           {budgets.map(b => {
             const s = status(b)
             return (
-              <div key={b.id} className="card budget-card">
+              <div
+                key={b.id}
+                className="card budget-card card-clickable"
+                role="button"
+                tabIndex={0}
+                onClick={() => openEdit(b)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEdit(b) } }}
+              >
                 <div className="budget-row">
                   <div className="budget-cat">
                     <span className="color-dot" style={{ background: b.category_color }}></span>
@@ -105,8 +114,12 @@ export function Budgets() {
                     <span className={`budget-status budget-status-${s.tone}`}>{s.label}</span>
                   </div>
                   <div className="budget-actions">
-                    <button className="btn btn-ghost btn-sm" onClick={() => openEdit(b)}><Pencil size={14} /></button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => remove(b.id)}><Trash2 size={14} /></button>
+                    <CardMenu
+                      items={[
+                        { label: 'Edit', icon: <Pencil size={14} />, onClick: () => openEdit(b) },
+                        { label: 'Delete', icon: <Trash2 size={14} />, onClick: () => remove(b.id), danger: true },
+                      ]}
+                    />
                   </div>
                 </div>
                 <div className="budget-amounts">
@@ -134,10 +147,9 @@ export function Budgets() {
         </div>
       )}
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2 className="modal-title">{editing ? 'Edit Budget' : 'New Budget'}</h2>
+      <ModalOverlay open={showModal} onClose={() => setShowModal(false)}>
+        <div className="modal" onClick={e => e.stopPropagation()}>
+          <h2 className="modal-title">{editing ? 'Edit Budget' : 'New Budget'}</h2>
 
             <div className="form-group">
               <label className="form-label">Category</label>
@@ -169,9 +181,8 @@ export function Budgets() {
               <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={save} disabled={!form.category_id || !form.amount}>{editing ? 'Save' : 'Add Budget'}</button>
             </div>
-          </div>
         </div>
-      )}
+      </ModalOverlay>
     </div>
   )
 }

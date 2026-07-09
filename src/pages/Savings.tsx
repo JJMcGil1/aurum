@@ -3,6 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Plus, PiggyBank, TrendingUp, Wallet } from 'lucide-react'
 import { formatCurrency } from '../lib/format'
 import type { SavingsData } from '../types'
+import { ModalOverlay } from '../components/ModalOverlay'
 
 export function Savings() {
   const [data, setData] = useState<SavingsData | null>(null)
@@ -130,10 +131,9 @@ export function Savings() {
         </div>
       </div>
 
-      {contributing !== null && (
-        <div className="modal-overlay" onClick={() => setContributing(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2 className="modal-title">Add to Savings</h2>
+      <ModalOverlay open={contributing !== null} onClose={() => setContributing(null)}>
+        <div className="modal" onClick={e => e.stopPropagation()}>
+          <h2 className="modal-title">Add to Savings</h2>
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Amount</label>
@@ -155,9 +155,8 @@ export function Savings() {
               <button className="btn btn-secondary" onClick={() => setContributing(null)}>Cancel</button>
               <button className="btn btn-primary" onClick={submit} disabled={!form.amount}>Add</button>
             </div>
-          </div>
         </div>
-      )}
+      </ModalOverlay>
     </div>
   )
 }

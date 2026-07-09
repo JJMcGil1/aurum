@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, Camera, X } from 'lucide-react'
 import { getInitials } from '../lib/format'
 import type { FamilyMember } from '../types'
+import { ModalOverlay } from '../components/ModalOverlay'
+import { CardMenu } from '../components/CardMenu'
 
 const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6']
 const ROLES = ['Owner', 'Spouse', 'Partner', 'Child', 'Parent', 'Pet', 'Other']
@@ -112,15 +114,26 @@ export function Family() {
       {members.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {members.map(m => (
-            <div key={m.id} className="member-card">
+            <div
+              key={m.id}
+              className="member-card card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => openEdit(m)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEdit(m) } }}
+            >
               {renderAvatar(m, 'lg')}
               <div className="member-info">
                 <div className="member-name">{m.name}</div>
                 <div className="member-role">{m.role}</div>
               </div>
               <div className="member-actions">
-                <button className="btn btn-ghost btn-sm" onClick={() => openEdit(m)}><Pencil size={14} /></button>
-                <button className="btn btn-ghost btn-sm" onClick={() => remove(m.id)}><Trash2 size={14} /></button>
+                <CardMenu
+                  items={[
+                    { label: 'Edit', icon: <Pencil size={14} />, onClick: () => openEdit(m) },
+                    { label: 'Delete', icon: <Trash2 size={14} />, onClick: () => remove(m.id), danger: true },
+                  ]}
+                />
               </div>
             </div>
           ))}
@@ -135,10 +148,9 @@ export function Family() {
         </div>
       )}
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2 className="modal-title">{editing ? 'Edit Member' : 'Add Family Member'}</h2>
+      <ModalOverlay open={showModal} onClose={() => setShowModal(false)}>
+        <div className="modal" onClick={e => e.stopPropagation()}>
+          <h2 className="modal-title">{editing ? 'Edit Member' : 'Add Family Member'}</h2>
 
             {/* Avatar preview + image picker */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
@@ -202,9 +214,8 @@ export function Family() {
               <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={save} disabled={!form.first_name}>{editing ? 'Save' : 'Add Member'}</button>
             </div>
-          </div>
         </div>
-      )}
+      </ModalOverlay>
     </div>
   )
 }

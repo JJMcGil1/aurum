@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { UserPlus, Camera, X } from 'lucide-react'
 import { getInitials } from '../lib/format'
 import type { FamilyMember } from '../types'
+import { ModalOverlay } from './ModalOverlay'
 
 const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6']
 
@@ -116,10 +117,9 @@ export function ProfileTile() {
         <span className="rail-label">{profile ? fullName || 'Profile' : 'Set up profile'}</span>
       </button>
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2 className="modal-title">{profile ? 'Edit Profile' : 'Create Profile'}</h2>
+      <ModalOverlay open={showModal} onClose={() => setShowModal(false)}>
+        <div className="modal" onClick={e => e.stopPropagation()}>
+          <h2 className="modal-title">{profile ? 'Edit Profile' : 'Create Profile'}</h2>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
               {renderAvatar('xl', { first_name: form.first_name || (formFullName || '?'), last_name: form.last_name, avatar_color: form.avatar_color, avatar_image: form.avatar_image })}
@@ -183,9 +183,8 @@ export function ProfileTile() {
                 {profile ? 'Save' : 'Create'}
               </button>
             </div>
-          </div>
         </div>
-      )}
+      </ModalOverlay>
     </>
   )
 }

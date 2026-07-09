@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Plus, Trash2, Pencil, Target } from 'lucide-react'
 import { formatCurrency } from '../lib/format'
 import type { Goal } from '../types'
+import { ModalOverlay } from '../components/ModalOverlay'
+import { CardMenu } from '../components/CardMenu'
 
 const COLORS = ['#d4a843', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#f97316', '#14b8a6', '#ef4444']
 
@@ -111,7 +113,14 @@ export function Goals() {
             const days = daysUntil(g.target_date)
             const complete = g.current_amount >= g.target_amount
             return (
-              <div key={g.id} className="card goal-card">
+              <div
+                key={g.id}
+                className="card goal-card card-clickable"
+                role="button"
+                tabIndex={0}
+                onClick={() => openEdit(g)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEdit(g) } }}
+              >
                 <div className="goal-card-header">
                   <div className="goal-icon" style={{ background: g.color + '22', color: g.color }}><Target size={18} /></div>
                   <div className="goal-card-title">
@@ -125,8 +134,12 @@ export function Goals() {
                     )}
                   </div>
                   <div className="goal-actions">
-                    <button className="btn btn-ghost btn-sm" onClick={() => openEdit(g)}><Pencil size={14} /></button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => remove(g.id)}><Trash2 size={14} /></button>
+                    <CardMenu
+                      items={[
+                        { label: 'Edit', icon: <Pencil size={14} />, onClick: () => openEdit(g) },
+                        { label: 'Delete', icon: <Trash2 size={14} />, onClick: () => remove(g.id), danger: true },
+                      ]}
+                    />
                   </div>
                 </div>
 
@@ -160,10 +173,9 @@ export function Goals() {
         </div>
       )}
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2 className="modal-title">{editing ? 'Edit Goal' : 'New Goal'}</h2>
+      <ModalOverlay open={showModal} onClose={() => setShowModal(false)}>
+        <div className="modal" onClick={e => e.stopPropagation()}>
+          <h2 className="modal-title">{editing ? 'Edit Goal' : 'New Goal'}</h2>
 
             <div className="form-group">
               <label className="form-label">Name</label>
@@ -204,14 +216,12 @@ export function Goals() {
               <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={save} disabled={!form.name || !form.target_amount}>{editing ? 'Save' : 'Add Goal'}</button>
             </div>
-          </div>
         </div>
-      )}
+      </ModalOverlay>
 
-      {contributing && (
-        <div className="modal-overlay" onClick={() => setContributing(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2 className="modal-title">Contribute to {contributing.name}</h2>
+      <ModalOverlay open={!!contributing} onClose={() => setContributing(null)}>
+        <div className="modal" onClick={e => e.stopPropagation()}>
+          <h2 className="modal-title">Contribute to {contributing?.name ?? ''}</h2>
             <div className="form-group">
               <label className="form-label">Amount</label>
               <input className="form-input" type="number" step="0.01" placeholder="0.00" autoFocus value={contribution} onChange={e => setContribution(e.target.value)} />
@@ -220,9 +230,8 @@ export function Goals() {
               <button className="btn btn-secondary" onClick={() => setContributing(null)}>Cancel</button>
               <button className="btn btn-primary" onClick={submitContribution} disabled={!contribution}>Add</button>
             </div>
-          </div>
         </div>
-      )}
+      </ModalOverlay>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import type { Category } from '../types'
+import { ModalOverlay } from '../components/ModalOverlay'
 
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#64748b', '#78716c', '#a855f7', '#10b981']
 
@@ -79,9 +80,8 @@ export function Categories() {
         )}
       </div>
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
+      <ModalOverlay open={showModal} onClose={() => setShowModal(false)}>
+        <div className="modal" onClick={e => e.stopPropagation()}>
             <h2 className="modal-title">New Category</h2>
 
             <div className="form-group">
@@ -115,9 +115,8 @@ export function Categories() {
               <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={save} disabled={!form.name}>Add Category</button>
             </div>
-          </div>
         </div>
-      )}
+      </ModalOverlay>
     </div>
   )
 }
