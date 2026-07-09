@@ -75,6 +75,10 @@ export class Database {
         name TEXT NOT NULL,
         amount REAL NOT NULL,
         notes TEXT,
+        expense_date TEXT,
+        due_date TEXT,
+        recurrence TEXT NOT NULL DEFAULT 'once' CHECK(recurrence IN ('once','weekly','biweekly','monthly','quarterly','yearly')),
+        end_date TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 
@@ -196,6 +200,10 @@ export class Database {
           name TEXT NOT NULL,
           amount REAL NOT NULL,
           notes TEXT,
+          expense_date TEXT,
+          due_date TEXT,
+          recurrence TEXT NOT NULL DEFAULT 'once' CHECK(recurrence IN ('once','weekly','biweekly','monthly','quarterly','yearly')),
+          end_date TEXT,
           created_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
         CREATE TABLE expense_members (
@@ -208,6 +216,24 @@ export class Database {
         CREATE INDEX idx_expense_members_expense ON expense_members(expense_id);
         CREATE INDEX idx_expense_members_member ON expense_members(member_id);
       `)
+    } else {
+      // Add expense_date / due_date / recurrence / end_date columns if missing
+      const hasExpenseDate = expCols.some((c: any) => c.name === 'expense_date')
+      const hasDueDate = expCols.some((c: any) => c.name === 'due_date')
+      const hasRecurrence = expCols.some((c: any) => c.name === 'recurrence')
+      const hasEndDate = expCols.some((c: any) => c.name === 'end_date')
+      if (!hasExpenseDate) {
+        this.db.exec(`ALTER TABLE expenses ADD COLUMN expense_date TEXT`)
+      }
+      if (!hasDueDate) {
+        this.db.exec(`ALTER TABLE expenses ADD COLUMN due_date TEXT`)
+      }
+      if (!hasRecurrence) {
+        this.db.exec(`ALTER TABLE expenses ADD COLUMN recurrence TEXT NOT NULL DEFAULT 'once'`)
+      }
+      if (!hasEndDate) {
+        this.db.exec(`ALTER TABLE expenses ADD COLUMN end_date TEXT`)
+      }
     }
 
     // Seed default categories if empty
@@ -432,12 +458,20 @@ export class Database {
     })
   }
 
-  addExpense(expense: { name: string; amount: number; notes?: string; beneficiary_ids: number[]; payers: { member_id: number; amount: number }[] }) {
-    const insertExpense = this.db.prepare('INSERT INTO expenses (name, amount, notes) VALUES (?, ?, ?)')
+  addExpense(expense: { name: string; amount: number; notes?: string; expense_date?: string | null; due_date?: string | null; recurrence?: string | null; end_date?: string | null; beneficiary_ids: number[]; payers: { member_id: number; amount: number }[] }) {
+    const insertExpense = this.db.prepare('INSERT INTO expenses (name, amount, notes, expense_date, due_date, recurrence, end_date) VALUES (?, ?, ?, ?, ?, ?, ?)')
     const insertMember = this.db.prepare('INSERT INTO expense_members (expense_id, member_id, role, amount) VALUES (?, ?, ?, ?)')
 
     const result = this.db.transaction(() => {
-      const res = insertExpense.run(expense.name, expense.amount, expense.notes || null)
+      const res = insertExpense.run(
+        expense.name,
+        expense.amount,
+        expense.notes || null,
+        expense.expense_date || null,
+        expense.due_date || null,
+        expense.recurrence || 'once',
+        expense.end_date || null,
+      )
       const expenseId = res.lastInsertRowid
 
       for (const id of expense.beneficiary_ids) {
@@ -453,13 +487,22 @@ export class Database {
     return this.getExpenseById(result as number)
   }
 
-  updateExpense(id: number, expense: { name: string; amount: number; notes?: string; beneficiary_ids: number[]; payers: { member_id: number; amount: number }[] }) {
-    const updateExp = this.db.prepare('UPDATE expenses SET name = ?, amount = ?, notes = ? WHERE id = ?')
+  updateExpense(id: number, expense: { name: string; amount: number; notes?: string; expense_date?: string | null; due_date?: string | null; recurrence?: string | null; end_date?: string | null; beneficiary_ids: number[]; payers: { member_id: number; amount: number }[] }) {
+    const updateExp = this.db.prepare('UPDATE expenses SET name = ?, amount = ?, notes = ?, expense_date = ?, due_date = ?, recurrence = ?, end_date = ? WHERE id = ?')
     const deleteMembersStmt = this.db.prepare('DELETE FROM expense_members WHERE expense_id = ?')
     const insertMember = this.db.prepare('INSERT INTO expense_members (expense_id, member_id, role, amount) VALUES (?, ?, ?, ?)')
 
     this.db.transaction(() => {
-      updateExp.run(expense.name, expense.amount, expense.notes || null, id)
+      updateExp.run(
+        expense.name,
+        expense.amount,
+        expense.notes || null,
+        expense.expense_date || null,
+        expense.due_date || null,
+        expense.recurrence || 'once',
+        expense.end_date || null,
+        id,
+      )
       deleteMembersStmt.run(id)
 
       for (const memberId of expense.beneficiary_ids) {

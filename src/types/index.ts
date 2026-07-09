@@ -59,11 +59,17 @@ export interface ExpenseMember {
   member_role: string
 }
 
+export type ExpenseRecurrence = 'once' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly'
+
 export interface Expense {
   id: number
   name: string
   amount: number
   notes: string | null
+  expense_date: string | null
+  due_date: string | null
+  recurrence: ExpenseRecurrence
+  end_date: string | null
   created_at: string
   beneficiaries: ExpenseMember[]
   payers: ExpenseMember[]

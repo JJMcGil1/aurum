@@ -1,8 +1,18 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
-import { formatCurrency, getInitials } from '../lib/format'
+import { Plus, Pencil, Trash2, Repeat } from 'lucide-react'
+import { formatCurrency, formatDate, getInitials, todayISO, recurrenceLabel, nextOccurrence } from '../lib/format'
+import { ModalOverlay } from '../components/ModalOverlay'
 
-import type { Expense, FamilyMember } from '../types'
+import type { Expense, ExpenseRecurrence, FamilyMember } from '../types'
+
+const RECURRENCE_OPTIONS: { value: ExpenseRecurrence; label: string }[] = [
+  { value: 'once',      label: 'One-time' },
+  { value: 'weekly',    label: 'Weekly' },
+  { value: 'biweekly',  label: 'Every 2 weeks' },
+  { value: 'monthly',   label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'yearly',    label: 'Yearly' },
+]
 
 export function Expenses() {
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -15,13 +25,19 @@ export function Expenses() {
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
   const [notes, setNotes] = useState('')
+  const [expenseDate, setExpenseDate] = useState<string>(todayISO())
+  const [dueDate, setDueDate] = useState<string>('')
+  const [recurrence, setRecurrence] = useState<ExpenseRecurrence>('once')
+  const [endDate, setEndDate] = useState<string>('')
   const [selectedBeneficiaries, setSelectedBeneficiaries] = useState<number[]>([])
   const [payerAmounts, setPayerAmounts] = useState<Record<number, string>>({})
 
   const load = () => {
     window.api.getExpenses().then(setExpenses)
-    window.api.getNonPetMembers().then(setMembers)
+    window.api.getFamilyMembers().then(setMembers)
   }
+
+  const payerMembers = members.filter(m => m.role !== 'Pet')
 
   useEffect(() => { load() }, [])
 
@@ -29,6 +45,10 @@ export function Expenses() {
     setName('')
     setAmount('')
     setNotes('')
+    setExpenseDate(todayISO())
+    setDueDate('')
+    setRecurrence('once')
+    setEndDate('')
     setSelectedBeneficiaries([])
     setPayerAmounts({})
     setEditing(null)
@@ -44,6 +64,10 @@ export function Expenses() {
     setName(exp.name)
     setAmount(String(exp.amount))
     setNotes(exp.notes || '')
+    setExpenseDate(exp.expense_date || todayISO())
+    setDueDate(exp.due_date || '')
+    setRecurrence(exp.recurrence || 'once')
+    setEndDate(exp.end_date || '')
     setSelectedBeneficiaries(exp.beneficiaries.map(b => b.member_id))
     const pa: Record<number, string> = {}
     exp.payers.forEach(p => { pa[p.member_id] = String(p.amount || 0) })
@@ -86,6 +110,10 @@ export function Expenses() {
       name: name.trim(),
       amount: totalAmount,
       notes: notes.trim() || undefined,
+      expense_date: expenseDate || null,
+      due_date: dueDate || null,
+      recurrence,
+      end_date: recurrence === 'once' ? null : (endDate || null),
       beneficiary_ids: selectedBeneficiaries,
       payers: Object.entries(payerAmounts).map(([id, amt]) => ({
         member_id: Number(id),
@@ -136,6 +164,7 @@ export function Expenses() {
                 <tr>
                   <th>Expense</th>
                   <th>Amount</th>
+                  <th>Schedule</th>
                   <th>For</th>
                   <th>Paid By</th>
                   <th></th>
@@ -149,6 +178,52 @@ export function Expenses() {
                       {exp.notes && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{exp.notes}</div>}
                     </td>
                     <td><span className="amount">{formatCurrency(exp.amount)}</span></td>
+                    <td>
+                      {(() => {
+                        const isRecurring = exp.recurrence && exp.recurrence !== 'once'
+                        const next = isRecurring
+                          ? nextOccurrence(exp.expense_date, exp.recurrence, exp.end_date)
+                          : (exp.due_date || exp.expense_date)
+                        const today = new Date(); today.setHours(0, 0, 0, 0)
+                        let color = 'var(--text-secondary)'
+                        let suffix = ''
+                        if (next) {
+                          const nd = new Date(next + 'T00:00:00')
+                          const diffDays = Math.round((nd.getTime() - today.getTime()) / 86400000)
+                          if (diffDays < 0) { color = 'var(--red)'; suffix = ' · overdue' }
+                          else if (diffDays <= 7) { color = '#f59e0b' }
+                        }
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            {isRecurring && (
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                                <Repeat size={11} />
+                                <span>{recurrenceLabel(exp.recurrence)}</span>
+                              </div>
+                            )}
+                            {next ? (
+                              <div style={{ fontSize: 13, color }}>
+                                {isRecurring ? 'Next ' : ''}{formatDate(next)}{suffix}
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                                {isRecurring && exp.end_date ? 'Ended' : '—'}
+                              </div>
+                            )}
+                            {!isRecurring && exp.expense_date && exp.due_date && exp.due_date !== exp.expense_date && (
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                Charged {formatDate(exp.expense_date)}
+                              </div>
+                            )}
+                            {isRecurring && exp.end_date && (
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                Until {formatDate(exp.end_date)}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </td>
                     <td>
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                         {exp.beneficiaries.map(b => (
@@ -213,9 +288,8 @@ export function Expenses() {
       )}
 
       {/* Add/Edit Modal */}
-      {showModal && (
-        <div className="modal-overlay" onClick={() => { setShowModal(false); resetForm() }}>
-          <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
+      <ModalOverlay open={showModal} onClose={() => { setShowModal(false); resetForm() }}>
+        <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
             <h2 className="modal-title">{editing ? 'Edit Expense' : 'Add Expense'}</h2>
 
             <div className="form-group">
@@ -226,6 +300,56 @@ export function Expenses() {
             <div className="form-group">
               <label className="form-label">Amount</label>
               <input className="form-input" type="number" step="0.01" min="0" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">{recurrence === 'once' ? 'Expense Date' : 'Start Date'}</label>
+                <input
+                  className="form-input"
+                  type="date"
+                  value={expenseDate}
+                  onChange={e => setExpenseDate(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">{recurrence === 'once' ? 'Due Date (optional)' : 'First Due Date (optional)'}</label>
+                <input
+                  className="form-input"
+                  type="date"
+                  value={dueDate}
+                  onChange={e => setDueDate(e.target.value)}
+                  min={expenseDate || undefined}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Recurrence</label>
+                <select
+                  className="form-input"
+                  value={recurrence}
+                  onChange={e => setRecurrence(e.target.value as ExpenseRecurrence)}
+                >
+                  {RECURRENCE_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              {recurrence !== 'once' && (
+                <div className="form-group">
+                  <label className="form-label">End Date (optional)</label>
+                  <input
+                    className="form-input"
+                    type="date"
+                    value={endDate}
+                    onChange={e => setEndDate(e.target.value)}
+                    min={expenseDate || undefined}
+                    placeholder="No end"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="form-group">
@@ -266,7 +390,7 @@ export function Expenses() {
                 <div className="form-group">
                   <label className="form-label">Who pays?</label>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-                    {members.map(m => (
+                    {payerMembers.map(m => (
                       <button
                         key={m.id}
                         type="button"
@@ -341,23 +465,20 @@ export function Expenses() {
                 {editing ? 'Save Changes' : 'Add Expense'}
               </button>
             </div>
-          </div>
         </div>
-      )}
+      </ModalOverlay>
 
       {/* Delete confirmation */}
-      {confirmDelete !== null && (
-        <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
-          <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
-            <h2 className="modal-title">Delete Expense</h2>
-            <p className="confirm-text">Are you sure you want to delete this expense? This cannot be undone.</p>
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setConfirmDelete(null)}>Cancel</button>
-              <button className="btn btn-danger" onClick={() => handleDelete(confirmDelete)}>Delete</button>
-            </div>
+      <ModalOverlay open={confirmDelete !== null} onClose={() => setConfirmDelete(null)}>
+        <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+          <h2 className="modal-title">Delete Expense</h2>
+          <p className="confirm-text">Are you sure you want to delete this expense? This cannot be undone.</p>
+          <div className="modal-actions">
+            <button className="btn btn-secondary" onClick={() => setConfirmDelete(null)}>Cancel</button>
+            <button className="btn btn-danger" onClick={() => confirmDelete !== null && handleDelete(confirmDelete)}>Delete</button>
           </div>
         </div>
-      )}
+      </ModalOverlay>
     </div>
   )
 }

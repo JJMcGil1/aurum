@@ -94,6 +94,10 @@ function shapeExpense(row: any) {
     name: row.name,
     amount: row.amount,
     notes: row.notes,
+    expense_date: row.expense_date ?? null,
+    due_date: row.due_date ?? null,
+    recurrence: row.recurrence ?? 'once',
+    end_date: row.end_date ?? null,
     created_at: row.created_at,
     payers: members
       .filter(m => m.role === 'payer')

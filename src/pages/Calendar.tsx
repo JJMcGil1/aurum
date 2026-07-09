@@ -1,7 +1,26 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, ChevronLeft, ChevronRight, Check, Trash2, Pencil } from 'lucide-react'
-import { formatCurrency } from '../lib/format'
-import type { Bill, BillRecurrence, Category, Account } from '../types'
+import { Plus, ChevronLeft, ChevronRight, Check, Trash2, Pencil, Users, Repeat } from 'lucide-react'
+import { formatCurrency, expandOccurrences, recurrenceLabel } from '../lib/format'
+import type { Bill, BillRecurrence, Category, Account, Expense } from '../types'
+import { ModalOverlay } from '../components/ModalOverlay'
+import { CardMenu } from '../components/CardMenu'
+
+type CalendarItem =
+  | {
+      kind: 'bill'
+      id: string
+      date: string
+      bill: Bill
+    }
+  | {
+      kind: 'expense'
+      id: string
+      date: string
+      expense: Expense
+      occurrenceIndex: number
+    }
+
+const EXPENSE_CHIP_COLOR = '#7c6fcf' // iolite — distinct from gold-family bill categories
 
 const RECURRENCE: { value: BillRecurrence; label: string }[] = [
   { value: 'once', label: 'One-time' },
@@ -37,6 +56,7 @@ function buildMonthGrid(year: number, month: number) {
 
 export function Calendar() {
   const [bills, setBills] = useState<Bill[]>([])
+  const [expenses, setExpenses] = useState<Expense[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [cursor, setCursor] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
@@ -49,6 +69,7 @@ export function Calendar() {
 
   const load = () => {
     window.api.getBills().then(setBills)
+    window.api.getExpenses().then(setExpenses)
     window.api.getCategories().then(setCategories)
     window.api.getAccounts().then(setAccounts)
   }
@@ -57,35 +78,81 @@ export function Calendar() {
 
   const grid = useMemo(() => buildMonthGrid(cursor.getFullYear(), cursor.getMonth()), [cursor])
 
-  const billsByDate = useMemo(() => {
-    const map = new Map<string, Bill[]>()
-    for (const b of bills) {
-      const arr = map.get(b.due_date) || []
-      arr.push(b)
-      map.set(b.due_date, arr)
+  // Visible grid range — the calendar grid spans some days outside the month
+  const gridRange = useMemo(() => {
+    if (grid.length === 0) return { from: todayISO(), to: todayISO() }
+    return {
+      from: grid[0].date.toISOString().slice(0, 10),
+      to: grid[grid.length - 1].date.toISOString().slice(0, 10),
     }
-    return map
+  }, [grid])
+
+  // Expand recurring expenses into concrete occurrences within the visible grid
+  const expenseOccurrences = useMemo<CalendarItem[]>(() => {
+    const out: CalendarItem[] = []
+    for (const exp of expenses) {
+      const anchor = exp.due_date || exp.expense_date
+      if (!anchor) continue
+      const dates = expandOccurrences(anchor, exp.recurrence, exp.end_date, gridRange.from, gridRange.to)
+      dates.forEach((date, idx) => {
+        out.push({ kind: 'expense', id: `exp-${exp.id}-${date}`, date, expense: exp, occurrenceIndex: idx })
+      })
+    }
+    return out
+  }, [expenses, gridRange])
+
+  const billOccurrences = useMemo<CalendarItem[]>(() => {
+    return bills.map(b => ({ kind: 'bill' as const, id: `bill-${b.id}`, date: b.due_date, bill: b }))
   }, [bills])
 
-  const monthBills = useMemo(() => {
+  const itemsByDate = useMemo(() => {
+    const map = new Map<string, CalendarItem[]>()
+    for (const item of [...billOccurrences, ...expenseOccurrences]) {
+      const arr = map.get(item.date) || []
+      arr.push(item)
+      map.set(item.date, arr)
+    }
+    return map
+  }, [billOccurrences, expenseOccurrences])
+
+  const monthItems = useMemo(() => {
     const y = cursor.getFullYear()
     const m = cursor.getMonth()
-    return bills.filter(b => {
-      const d = new Date(b.due_date + 'T00:00:00')
-      return d.getFullYear() === y && d.getMonth() === m
-    }).sort((a, b) => a.due_date.localeCompare(b.due_date))
-  }, [bills, cursor])
+    return [...billOccurrences, ...expenseOccurrences]
+      .filter(item => {
+        const d = new Date(item.date + 'T00:00:00')
+        return d.getFullYear() === y && d.getMonth() === m
+      })
+      .sort((a, b) => a.date.localeCompare(b.date))
+  }, [billOccurrences, expenseOccurrences, cursor])
 
-  const monthTotal = monthBills.reduce((s, b) => s + b.amount, 0)
+  const itemAmount = (it: CalendarItem) => it.kind === 'bill' ? it.bill.amount : it.expense.amount
+  const monthTotal = monthItems.reduce((s, it) => s + itemAmount(it), 0)
+
   const upcoming7 = useMemo(() => {
     const now = new Date(); now.setHours(0, 0, 0, 0)
     const horizon = new Date(now); horizon.setDate(horizon.getDate() + 7)
-    return bills.filter(b => {
-      const d = new Date(b.due_date + 'T00:00:00')
-      return d >= now && d <= horizon
-    })
-  }, [bills])
-  const upcoming7Total = upcoming7.reduce((s, b) => s + b.amount, 0)
+    const horizonISO = horizon.toISOString().slice(0, 10)
+    const todayISOStr = now.toISOString().slice(0, 10)
+    const expenseExpansions: CalendarItem[] = []
+    for (const exp of expenses) {
+      const anchor = exp.due_date || exp.expense_date
+      if (!anchor) continue
+      const dates = expandOccurrences(anchor, exp.recurrence, exp.end_date, todayISOStr, horizonISO)
+      dates.forEach((date, idx) => expenseExpansions.push({
+        kind: 'expense', id: `exp-${exp.id}-${date}`, date, expense: exp, occurrenceIndex: idx,
+      }))
+    }
+    const billItems = bills
+      .filter(b => {
+        const d = new Date(b.due_date + 'T00:00:00')
+        return d >= now && d <= horizon
+      })
+      .map(b => ({ kind: 'bill' as const, id: `bill-${b.id}`, date: b.due_date, bill: b }))
+    return [...billItems, ...expenseExpansions]
+  }, [bills, expenses])
+  const upcoming7Total = upcoming7.reduce((s, it) => s + itemAmount(it), 0)
+  const activeCount = bills.length + expenses.length
 
   const openNew = () => {
     setEditing(null)
@@ -139,7 +206,7 @@ export function Calendar() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Calendar</h1>
-          <p className="page-subtitle">Bills and due dates</p>
+          <p className="page-subtitle">Bills and expense schedules</p>
         </div>
         <button className="btn btn-primary" onClick={openNew}><Plus size={16} /> Add Bill</button>
       </div>
@@ -154,8 +221,11 @@ export function Calendar() {
           <div className="stat-value accent">{formatCurrency(upcoming7Total)}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Active Bills</div>
-          <div className="stat-value">{bills.length}</div>
+          <div className="stat-label">Active Items</div>
+          <div className="stat-value">{activeCount}</div>
+          <div className="stat-meta" style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+            {bills.length} bill{bills.length !== 1 ? 's' : ''} · {expenses.length} expense{expenses.length !== 1 ? 's' : ''}
+          </div>
         </div>
       </div>
 
@@ -171,17 +241,39 @@ export function Calendar() {
             {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => <div key={d} className="calendar-weekday">{d}</div>)}
             {grid.map((cell, i) => {
               const iso = cell.date.toISOString().slice(0, 10)
-              const cellBills = billsByDate.get(iso) || []
+              const cellItems = itemsByDate.get(iso) || []
               return (
                 <div key={i} className={`calendar-cell ${cell.inMonth ? '' : 'out-of-month'} ${isToday(cell.date) ? 'is-today' : ''}`}>
                   <div className="calendar-cell-date">{cell.date.getDate()}</div>
                   <div className="calendar-cell-bills">
-                    {cellBills.slice(0, 3).map(b => (
-                      <div key={b.id} className="calendar-bill-chip" style={{ background: b.category_color || 'var(--accent-subtle)' }} title={`${b.name} — ${formatCurrency(b.amount)}`}>
-                        {b.name}
-                      </div>
-                    ))}
-                    {cellBills.length > 3 && <div className="calendar-bill-more">+{cellBills.length - 3}</div>}
+                    {cellItems.slice(0, 3).map(item => {
+                      if (item.kind === 'bill') {
+                        return (
+                          <div
+                            key={item.id}
+                            className="calendar-bill-chip"
+                            style={{ background: item.bill.category_color || 'var(--accent-subtle)' }}
+                            title={`${item.bill.name} — ${formatCurrency(item.bill.amount)}`}
+                          >
+                            {item.bill.name}
+                          </div>
+                        )
+                      }
+                      const exp = item.expense
+                      const recurring = exp.recurrence && exp.recurrence !== 'once'
+                      return (
+                        <div
+                          key={item.id}
+                          className="calendar-bill-chip"
+                          style={{ background: EXPENSE_CHIP_COLOR, color: '#fff', display: 'flex', alignItems: 'center', gap: 3 }}
+                          title={`${exp.name} — ${formatCurrency(exp.amount)}${recurring ? ` · ${recurrenceLabel(exp.recurrence)}` : ''}`}
+                        >
+                          {recurring ? <Repeat size={9} /> : <Users size={9} />}
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{exp.name}</span>
+                        </div>
+                      )
+                    })}
+                    {cellItems.length > 3 && <div className="calendar-bill-more">+{cellItems.length - 3}</div>}
                   </div>
                 </div>
               )
@@ -190,38 +282,82 @@ export function Calendar() {
         </div>
 
         <div className="card calendar-side">
-          <div className="card-header"><h3 className="card-title">{monthLabel(cursor)} Bills</h3></div>
-          {monthBills.length === 0 ? (
-            <div className="empty-state"><p>No bills this month</p></div>
+          <div className="card-header"><h3 className="card-title">{monthLabel(cursor)} Schedule</h3></div>
+          {monthItems.length === 0 ? (
+            <div className="empty-state"><p>Nothing scheduled this month</p></div>
           ) : (
             <div className="bill-list">
-              {monthBills.map(b => (
-                <div key={b.id} className="bill-row">
-                  <div className="bill-row-main">
-                    <div className="bill-row-name">{b.name}</div>
-                    <div className="bill-row-meta">
-                      {new Date(b.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      {' · '}{b.recurrence}
-                      {b.category_name && <> · <span style={{ color: b.category_color || 'inherit' }}>{b.category_name}</span></>}
+              {monthItems.map(item => {
+                const dateLabel = new Date(item.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                if (item.kind === 'bill') {
+                  const b = item.bill
+                  return (
+                    <div key={item.id} className="bill-row">
+                      <div className="bill-row-main">
+                        <div className="bill-row-name">{b.name}</div>
+                        <div className="bill-row-meta">
+                          {dateLabel}
+                          {' · '}{recurrenceLabel(b.recurrence)}
+                          {b.category_name && <> · <span style={{ color: b.category_color || 'inherit' }}>{b.category_name}</span></>}
+                        </div>
+                      </div>
+                      <div className="bill-row-amount amount amount-negative">{formatCurrency(b.amount)}</div>
+                      <div className="bill-row-actions">
+                        <button className="btn btn-ghost btn-sm" title="Mark paid" onClick={() => pay(b.id)}><Check size={14} /></button>
+                        <CardMenu
+                          items={[
+                            { label: 'Edit', icon: <Pencil size={14} />, onClick: () => openEdit(b) },
+                            { label: 'Delete', icon: <Trash2 size={14} />, onClick: () => remove(b.id), danger: true },
+                          ]}
+                        />
+                      </div>
                     </div>
+                  )
+                }
+                const exp = item.expense
+                const recurring = exp.recurrence && exp.recurrence !== 'once'
+                return (
+                  <div key={item.id} className="bill-row">
+                    <div className="bill-row-main">
+                      <div className="bill-row-name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span
+                          title="Family expense"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 16, height: 16,
+                            borderRadius: 4,
+                            background: EXPENSE_CHIP_COLOR,
+                            color: '#fff',
+                          }}
+                        >
+                          {recurring ? <Repeat size={9} /> : <Users size={9} />}
+                        </span>
+                        {exp.name}
+                      </div>
+                      <div className="bill-row-meta">
+                        {dateLabel}
+                        {' · '}{recurrenceLabel(exp.recurrence)}
+                        {' · '}Expense
+                        {exp.payers.length > 0 && (
+                          <> · paid by {exp.payers.map(p => p.member_name.split(' ')[0]).join(', ')}</>
+                        )}
+                      </div>
+                    </div>
+                    <div className="bill-row-amount amount amount-negative">{formatCurrency(exp.amount)}</div>
+                    <div className="bill-row-actions" />
                   </div>
-                  <div className="bill-row-amount amount amount-negative">{formatCurrency(b.amount)}</div>
-                  <div className="bill-row-actions">
-                    <button className="btn btn-ghost btn-sm" title="Mark paid" onClick={() => pay(b.id)}><Check size={14} /></button>
-                    <button className="btn btn-ghost btn-sm" title="Edit" onClick={() => openEdit(b)}><Pencil size={14} /></button>
-                    <button className="btn btn-ghost btn-sm" title="Delete" onClick={() => remove(b.id)}><Trash2 size={14} /></button>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
       </div>
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2 className="modal-title">{editing ? 'Edit Bill' : 'New Bill'}</h2>
+      <ModalOverlay open={showModal} onClose={() => setShowModal(false)}>
+        <div className="modal" onClick={e => e.stopPropagation()}>
+          <h2 className="modal-title">{editing ? 'Edit Bill' : 'New Bill'}</h2>
 
             <div className="form-group">
               <label className="form-label">Name</label>
@@ -272,9 +408,8 @@ export function Calendar() {
               <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={save} disabled={!form.name || !form.amount}>{editing ? 'Save' : 'Add Bill'}</button>
             </div>
-          </div>
         </div>
-      )}
+      </ModalOverlay>
     </div>
   )
 }
